@@ -1,0 +1,7 @@
+# macOS
+.DS_Store
+.thumbnail
+
+# Working material, not part of the game: Claaro brand guidelines, entity
+# sheets, design scraps. Kept local on purpose — see the Claaro sign-off rule.
+Resources/

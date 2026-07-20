@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Shift Happens — the margin is the message</title>
+<meta name="description" content="Win contracts. Hire cleaners. Keep the sites clean. Discover that hiring help costs almost exactly what it saves. A deadpan arcade about running facilities without a system.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --murk:#07100c;--sage:#6b7d75;--sage2:#8a9c94;--chalk:#c9d6d0;--faint:#5f6f68;
+    --label:#c3cec9;--red:#e5735a;--amber:#e5a94f;--beam:#f0e6c8;--blue:#60a5fa;
+    --mint:#32DC97;--mint-dk:#28C886;--ink:#0E1413;--ink-70:#344038;--ink-40:#7C8980;--paper:#F4F2EC;
+    --f-chaos:'Plus Jakarta Sans',system-ui,sans-serif;--f-brand:'Figtree',system-ui,sans-serif;--e:.35;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden}
+  body{background:var(--murk);color:var(--chalk);font-family:var(--f-chaos);
+    -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;
+    user-select:none;-webkit-user-select:none;cursor:crosshair}
+  #stage{position:fixed;inset:0;background:radial-gradient(120% 140% at 50% 46%,#131c16 0%,#0d1210 55%,#060a08 100%)}
+  svg{display:block;width:100%;height:100%;touch-action:none}
+  text{pointer-events:none}
+  @keyframes wob{0%{transform:translate(0,0)}25%{transform:translate(calc(var(--e)*1.2px),calc(var(--e)*-.8px))}
+    50%{transform:translate(calc(var(--e)*-.8px),calc(var(--e)*1px))}75%{transform:translate(calc(var(--e)*.8px),calc(var(--e)*.6px))}
+    100%{transform:translate(0,0)}}
+  .wob{animation:wob 1.15s infinite steps(2)}
+  @media (prefers-reduced-motion:reduce){.wob{animation:none}}
+
+  #hud{position:fixed;inset:0;pointer-events:none}
+  #top{position:absolute;top:0;left:0;right:0;display:flex;align-items:flex-start;
+    justify-content:space-between;padding:12px 22px;gap:18px;flex-wrap:wrap}
+  .bit{font:600 11px/1 var(--f-chaos);letter-spacing:.09em;color:var(--faint);text-transform:uppercase}
+  .bit b{display:block;color:var(--chalk);font-size:19px;letter-spacing:-.01em;margin-top:5px;font-weight:700}
+  #mark{font:800 13px/1 var(--f-chaos);color:var(--sage2);padding-top:4px}
+  #mark .a{display:inline-block;transform:rotate(-2deg)}
+  #mark .b{display:inline-block;transform:rotate(1.5deg) translateY(1px)}
+  #cashBox b{font-size:26px}
+  #rate{display:block;margin-top:3px;font:700 12.5px/1 var(--f-chaos);letter-spacing:0}
+  .up{color:var(--mint)}.down{color:var(--red)}
+  #combo{position:absolute;top:74px;left:50%;transform:translateX(-50%);font:800 30px/1 var(--f-chaos);
+    color:var(--amber);opacity:0;transition:opacity .2s;text-shadow:0 2px 14px rgba(0,0,0,.7)}
+  #toasts{position:absolute;left:16px;bottom:12px;display:flex;flex-direction:column;gap:6px;max-width:min(400px,56vw)}
+  .toast{background:rgba(10,17,13,.9);border:1px solid #24332b;border-left:3px solid var(--sage);
+    color:var(--label);font-size:12.5px;line-height:1.45;padding:8px 12px;border-radius:5px;
+    opacity:0;transform:translateY(6px);transition:.25s}
+  .toast.show{opacity:1;transform:none}
+  .toast.bad{border-left-color:var(--red)}.toast.warn{border-left-color:var(--amber)}
+  .toast.good{border-left-color:var(--mint)}.toast.money{border-left-color:var(--blue)}
+  #hint{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:none;
+    background:rgba(7,16,12,.93);border:1px dashed var(--sage);color:var(--chalk);
+    font:600 13.5px/1.5 var(--f-chaos);padding:9px 18px;border-radius:8px;text-align:center;max-width:min(640px,90vw)}
+
+  .screen{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:50;background:rgba(5,9,7,.93)}
+  .screen.show{display:flex}
+  .panel{max-width:720px;width:calc(100vw - 40px);text-align:center;padding:28px}
+  #title h1{font:800 clamp(36px,7vw,62px)/1.02 var(--f-chaos);letter-spacing:-.02em;color:var(--chalk)}
+  #title h1 .a{display:inline-block;transform:rotate(-1.8deg)}
+  #title h1 .b{display:inline-block;transform:rotate(1.2deg) translateY(3px);color:var(--sage2)}
+  #title .sub{margin-top:14px;color:var(--label);font-size:16px;line-height:1.6}
+  #title .sub b{color:var(--chalk)}
+  .keys{margin:22px auto 0;display:flex;gap:9px;justify-content:center;flex-wrap:wrap;max-width:640px}
+  .keys span{font-size:12.5px;color:var(--faint);border:1px solid #24332b;padding:6px 11px;border-radius:5px;background:rgba(16,24,19,.6)}
+  .keys b{color:var(--chalk)}
+  .btn{pointer-events:auto;cursor:pointer;display:inline-block;margin-top:24px;background:#1a2620;
+    border:1.5px solid var(--sage2);color:var(--chalk);font:700 16px/1 var(--f-chaos);
+    letter-spacing:.04em;padding:14px 34px;border-radius:8px;transition:.15s}
+  .btn:hover{background:#22322a;transform:translateY(-1px)}
+  #title .foot{margin-top:20px;color:var(--faint);font-size:12.5px}
+  #death p{font:600 clamp(19px,3.4vw,25px)/1.5 var(--f-chaos);color:var(--chalk)}
+  #death small{display:block;margin-top:12px;color:var(--faint);font-size:14px}
+
+  #epiTag{position:fixed;top:22px;left:50%;transform:translateX(-50%);z-index:45;display:none;
+    font:700 13px/1 var(--f-brand);color:var(--mint);letter-spacing:.15em;text-transform:uppercase}
+  #epiCount{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:45;display:none;
+    font-family:var(--f-brand);text-align:center}
+  #epiCount b{display:block;font:800 42px/1 var(--f-brand);color:#fff}
+  #epiCount span{display:block;margin-top:5px;font-size:12px;color:rgba(255,255,255,.5);letter-spacing:.1em;text-transform:uppercase}
+  #epiCount i{display:block;margin-top:3px;font-style:normal;font-size:12px;color:var(--mint)}
+
+  #score .card{pointer-events:auto;background:var(--paper);color:var(--ink);border-radius:24px;
+    max-width:680px;width:calc(100vw - 34px);padding:30px;font-family:var(--f-brand);text-align:left;
+    max-height:calc(100vh - 44px);overflow:auto}
+  #score .eyebrow{font:700 11.5px/1 var(--f-brand);letter-spacing:.16em;text-transform:uppercase;color:var(--mint-dk)}
+  #score h2{font:800 clamp(23px,4vw,31px)/1.15 var(--f-brand);letter-spacing:-.02em;margin-top:8px}
+  #score .lede{margin-top:8px;color:var(--ink-70);font-size:15px;line-height:1.6}
+  table{width:100%;border-collapse:collapse;margin-top:20px;font-size:14.5px}
+  th{font:700 11px/1 var(--f-brand);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-40);
+    text-align:right;padding:0 2px 8px;border-bottom:1.5px solid rgba(14,20,19,.12)}
+  th:first-child{text-align:left}
+  td{padding:9px 2px;border-bottom:1px solid rgba(14,20,19,.07);color:var(--ink-70);text-align:right}
+  td:first-child{text-align:left;color:var(--ink);font-weight:600}
+  td.cv{font-weight:700;color:#b3543f}td.kv{font-weight:800;color:var(--mint-dk)}
+  #score .row{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;align-items:center}
+  #nameIn{flex:1;min-width:150px;font:15px var(--f-brand);padding:12px 14px;border-radius:12px;
+    border:1.5px solid rgba(14,20,19,.18);background:#fff;color:var(--ink);outline:none}
+  #nameIn:focus{border-color:var(--mint)}
+  .bbtn{cursor:pointer;font:700 15px var(--f-brand);border:none;padding:12px 22px;border-radius:999px}
+  .bbtn.mint{background:var(--mint);color:var(--ink)}.bbtn.mint:hover{background:var(--mint-dk)}
+  .bbtn.ghost{background:transparent;color:var(--ink-70);border:1.5px solid rgba(14,20,19,.18)}
+  #lb{margin-top:16px;display:none}
+  #lb h3{font:700 11.5px/1 var(--f-brand);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-40);margin-bottom:8px}
+  .lbRow{display:flex;justify-content:space-between;font-size:14px;padding:7px 10px;border-radius:10px;color:var(--ink-70)}
+  .lbRow b{color:var(--ink)}.lbRow.me{background:rgba(50,220,151,.14)}
+  #score .cta{margin-top:18px;padding-top:16px;border-top:1.5px solid rgba(14,20,19,.1);
+    display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+  #score .cta p{font-size:14px;color:var(--ink-70);max-width:350px;line-height:1.5}
+  #rotate{position:fixed;inset:0;background:var(--murk);z-index:90;display:none;align-items:center;
+    justify-content:center;text-align:center;padding:30px;font-size:16px;line-height:1.6}
+  @media (orientation:portrait) and (max-width:760px){#rotate{display:flex}}
+</style>
+</head>
+<body>
+<div id="stage"><svg id="game" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid meet"></svg></div>
+
+<div id="hud">
+  <div id="top">
+    <div id="mark"><span class="a">SHIFT</span> <span class="b">HAPPENS</span></div>
+    <div class="bit">Day<b id="hDay">1</b></div>
+    <div class="bit" id="cashBox">Cash<b id="hCash">€600</b><span id="rate" class="up">+€0/day</span></div>
+    <div class="bit">Sites<b id="hSites">0</b></div>
+    <div class="bit">Cleaners<b id="hCrew">0</b></div>
+    <div class="bit">Admins<b id="hAdm">1</b></div>
+  </div>
+  <div id="combo"></div>
+  <div id="hint"></div>
+  <div id="toasts"></div>
+</div>
+
+<div id="epiTag">This is Claaro</div>
+<div id="epiCount"><b>0</b><span>Coordinators needed</span><i>(the margin stays yours)</i></div>
+
+<div class="screen show" id="title"><div class="panel">
+  <h1><span class="a">SHIFT</span> <span class="b">HAPPENS</span></h1>
+  <p class="sub"><b>Start with nothing. Build a cleaning company.</b><br>
+    Win contracts. Hire cleaners. Keep the buildings clean.<br>
+    Everything has to go through you, because there is nowhere else for it to go.</p>
+  <div class="keys">
+    <span><b>Hold the mouse</b> on a card to process it</span>
+    <span><b>C</b> contract → a new client &amp; their sites</span>
+    <span><b>H</b> applicant → hire a cleaner</span>
+    <span><b>!</b> job → a site needs cleaning</span>
+    <span>Your <b>focus</b> refills only when you let go</span>
+  </div>
+  <a class="btn" id="startBtn">Register the company</a>
+  <p class="foot">Margins are thin. Help is affordable. Those two facts are related.</p>
+</div></div>
+
+<div class="screen" id="death"><div class="panel">
+  <p id="deathLine"></p><small>Let's look at the books.</small>
+</div></div>
+
+<div class="screen" id="score" style="background:rgba(8,12,10,.55)"><div class="card">
+  <div class="eyebrow">Closing accounts</div>
+  <h2 id="scoreH">You lasted 14 days.</h2>
+  <p class="lede" id="scoreLede">The same contracts, the same buildings, two ways of running them.</p>
+  <table>
+    <tr><th>&nbsp;</th><th>You, by hand</th><th>With Claaro</th></tr>
+    <tr><td>Sites under contract</td><td class="cv" id="sSites">0</td><td class="kv" id="kSites">0</td></tr>
+    <tr><td>Coordinators on payroll</td><td class="cv" id="sAdm">1</td><td class="kv">1</td></tr>
+    <tr><td>Spent on coordination</td><td class="cv" id="sAdmCost">€0</td><td class="kv">€0</td></tr>
+    <tr><td>Profit per site / day</td><td class="cv" id="sMargin">€0</td><td class="kv" id="kMargin">€0</td></tr>
+    <tr><td>Things you personally touched</td><td class="cv" id="sActs">0</td><td class="kv">0</td></tr>
+    <tr><td>Could you grow further?</td><td class="cv">not without hiring</td><td class="kv">yes</td></tr>
+  </table>
+  <div class="row">
+    <input id="nameIn" maxlength="14" placeholder="Your name, for the record" autocomplete="off">
+    <button class="bbtn mint" id="saveBtn">Save score</button>
+    <button class="bbtn ghost" id="againBtn">Start again</button>
+  </div>
+  <div id="lb"><h3>Best operators</h3><div id="lbRows"></div></div>
+  <div class="cta">
+    <p>Claaro routes the work without a person in the middle — so the margin on site number twelve looks like the margin on site number one.</p>
+    <!-- CTA deliberately unlinked: claaro.com connection pending sales signoff -->
+    <span class="bbtn mint" style="opacity:.55;cursor:default" title="Link disabled in test build">See Claaro properly →</span>
+  </div>
+</div></div>
+
+<div id="rotate">Rotate your phone.<br><small style="color:var(--faint)">The rota is landscape. It has always been landscape.</small></div>
+
+<script>
+'use strict';
+/* =====================================================================
+   SHIFT HAPPENS v4 — the margin is the message
+   Build from nothing: contracts → sites → cleaners → jobs.
+   The economy is the argument: an admin costs almost exactly what it
+   saves, so growth never improves the margin. Only topology does.
+   ===================================================================== */
+const NS='http://www.w3.org/2000/svg', svg=document.getElementById('game');
+const DEBUG=/[?&]debug/.test(location.search), $=id=>document.getElementById(id);
+
+const CFG={
+  DAY:10,                                   // seconds per in-game day
+  /* focus (tactical) */
+  FOCUS:100, DRAIN:23, REGEN:16, DRY:.42,
+  CHAIN_WIN:1.7, CHAIN_MAX:8, CLUTCH_DIST:100, CLUTCH_FOCUS:20,
+  DESK:76, DRIFT:[30,52],
+  /* money (strategic) — tuned so an admin needs ~6.5 sites to pay for itself */
+  CASH0:600,
+  SITE_REV:120, CLEANER_WAGE:80, CLEANER_FEE:150,
+  ADMIN_WAGE:260, ADMIN_FEE:400, ADMIN_SPEED:.45, ADMIN_REGEN_PEN:.10,
+  /* buildings */
+  DIRT:.05, JOB_AT:.40, JOB_CLEAN:.55, FILTHY:.9,
+  SAT_DROP:.05, SAT_RECOVER:.012,
+  /* pacing */
+  CONTRACT_DAYS:[1,3,6,9,12,15,18],
+  CONTRACT_SITES:[1,1,2,2,3,3,4],
+  APPLICANT_GAP:5.5, ADMIN_OFFER_CASH:1000,
+  EPI_SEC:9
+};
+const CLIENTS=['Northgate Centre','Meridian Offices','Riverside Clinic','Alderman Retail','Portway Logistics','Kestrel Park'];
+const SITEN=['Main','Annexe','Atrium','West wing','Depot','Car park'];
+const NAMES=['Marek','Jana','Petr','Eva','Lucie','Tomáš','Ana','Dorin','Kasia','Ibrahim','Nadia','Sorin','Alina','Pavel'];
+const SLOTS=[{x:290,y:300},{x:1310,y:300},{x:290,y:760},{x:1310,y:760},{x:800,y:195},{x:800,y:855}];
+
+const SAY={
+  won:(c,n)=>`Signed ${c} — ${n} site${n>1?'s':''}, €${n*CFG.SITE_REV}/day. Congratulations. It is now your problem.`,
+  hired:(n,s)=>`Hired ${n} → ${s}. €${CFG.CLEANER_WAGE}/day, forever.`,
+  noCash:'Not enough cash. The contract still needs covering.',
+  understaffed:s=>`${s} has nobody assigned. It is getting dirty on its own.`,
+  filthy:s=>`${s} is filthy. The client walks through it every morning.`,
+  lostClient:c=>`${c} cancelled. That was €${'—'}/day you no longer make.`,
+  adminOffer:'You could afford another coordinator. That is not the same as needing one.',
+  adminHired:n=>`${n} starts Monday. €${CFG.ADMIN_WAGE}/day. Watch your margin.`,
+  marginFlip:'Your cashflow just went negative. The help is the expense.',
+  broke:'Cash gone. Wages do not pause for you.',
+  died:{broke:'You ran out of money.\nYou were profitable on every site and bankrupt overall.',
+        clients:'Every client left.\nThe buildings were dirty because you were busy.',
+        desk:'You stopped being able to keep up\nwith the company you built.'},
+  hint:{first:'Hold the mouse on the card until the ring fills.\nThat is a contract. Winning it gives you a building.',
+        job:'A site needs cleaning. Process the job and a cleaner will go.\nIf nobody is assigned there, it just gets dirtier.',
+        hire:'An applicant. Process them to hire — €150 now, €80 every day after.\nYou need roughly one per site.',
+        focus:'That ring is your focus. Holding burns it, letting go refills it.\nYou cannot hold everything.',
+        admin:'You can afford a second coordinator.\nThey process work while you breathe. They also cost €260/day.',
+        margin:'Look at your cashflow. The help costs what it saves.\nThat is not a bug in the game.'}
+};
+
+/* ---------- utils ---------- */
+function el(t,a,p){const n=document.createElementNS(NS,t);for(const k in a)if(a[k]!=null)n.setAttribute(k,a[k]);(p||svg).appendChild(n);return n}
+const gr=(a,p)=>el('g',a,p);
+function txt(x,y,s,a,p){const t=el('text',Object.assign({x,y},a),p);t.textContent=s;return t}
+let sd=23;function rnd(){sd|=0;sd=sd+0x6D2B79F5|0;let t=Math.imul(sd^sd>>>15,1|sd);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}
+const R=(a,b)=>a+rnd()*(b-a), pick=a=>a[(rnd()*a.length)|0];
+const money=v=>'€'+Math.round(v).toLocaleString('en-GB');
+let clipN=0;
+function face(p,x,y,r,tone){
+  const id='f'+(++clipN),cp=el('clipPath',{id},DEFS);el('circle',{r},cp);
+  const g2=gr({transform:`translate(${x},${y})`},p);
+  el('circle',{r,fill:'#131c17',stroke:tone||'rgba(232,238,235,.3)','stroke-width':1.5},g2);
+  const sil=gr({'clip-path':`url(#${id})`,fill:'#5d6f66',opacity:.9},g2);
+  el('circle',{cy:-r*.18,r:r*.31},sil);
+  el('path',{d:`M${-r*.64} ${r} a${r*.64} ${r*.6} 0 0 1 ${r*1.28} 0 z`},sil);return g2}
+
+const DEFS=el('defs',{});
+const Lgrime=gr({}),Lworld=gr({}),Lbeam=gr({}),Litems=gr({}),Lfx=gr({}),Lfloat=gr({});
+for(let i=0;i<12;i++)el('circle',{cx:R(80,1520),cy:R(120,940),r:R(45,120),fill:'#000',opacity:R(.1,.22)},Lgrime);
+Lgrime.setAttribute('opacity',0);
+
+/* ---------- you ---------- */
+const YOU={x:800,y:520,r:54};
+const youG=gr({class:'wob'},Lworld);
+face(youG,YOU.x,YOU.y,YOU.r,'rgba(232,238,235,.45)');
+el('circle',{cx:YOU.x,cy:YOU.y,r:CFG.DESK,fill:'none',stroke:'#3a4a43','stroke-width':1.4,'stroke-dasharray':'4 9',opacity:.8},youG);
+txt(YOU.x,YOU.y+CFG.DESK+26,'You',{fill:'#eef2f0','font-size':15,'font-weight':700,'text-anchor':'middle'},youG);
+const FR=2*Math.PI*(YOU.r+15);
+el('circle',{cx:YOU.x,cy:YOU.y,r:YOU.r+15,fill:'none',stroke:'#22322a','stroke-width':6},youG);
+const focusRing=el('circle',{cx:YOU.x,cy:YOU.y,r:YOU.r+15,fill:'none',stroke:'var(--beam)','stroke-width':6,
+  'stroke-linecap':'round','stroke-dasharray':FR,'stroke-dashoffset':0,transform:`rotate(-90 ${YOU.x} ${YOU.y})`},youG);
+
+/* ---------- state ---------- */
+const S={run:false,over:false,t:0,day:1,
+  cash:CFG.CASH0,rate:0,revenue:0,wages:0,
+  clients:[],crew:[],admins:[],items:[],
+  focus:CFG.FOCUS,dry:false,chain:0,chainT:0,
+  mx:800,my:520,down:false,target:null,shake:0,
+  contractIdx:0,applicantT:3,adminOffered:false,marginWarned:false,
+  hints:{},hintT:0,entropy:.35,
+  stats:{acts:0,peakSites:0,peakCrew:0,admins:1,adminSpend:0,revTotal:0,wageTotal:0}};
+
+/* ---------- clients & sites ---------- */
+function addClient(nSites){
+  if(S.clients.length>=SLOTS.length)return null;
+  const slot=SLOTS[S.clients.length];
+  const name=CLIENTS[S.clients.length];
+  const g2=gr({class:'wob',opacity:0},Lworld);
+  el('circle',{cx:slot.x,cy:slot.y,r:118,fill:'none',stroke:'#4d6459','stroke-width':1.6,'stroke-dasharray':'3 12',opacity:.95},g2);
+  txt(slot.x,slot.y-132,name,{fill:'#a8bab1','font-size':16,'font-weight':600,'text-anchor':'middle'},g2);
+  const satBar=el('rect',{x:slot.x-42,y:slot.y-122,width:84,height:4,rx:2,fill:'var(--mint)',opacity:.75},g2);
+  const cl={name,x:slot.x,y:slot.y,g:g2,sites:[],sat:1,satBar};
+  for(let i=0;i<nSites;i++){
+    const a=(-Math.PI/2)+i*(Math.PI*2/Math.max(1,nSites));
+    const sx=slot.x+(nSites>1?Math.cos(a)*62:0), sy=slot.y+(nSites>1?Math.sin(a)*62:0);
+    const sg=gr({},g2);
+    el('rect',{x:sx-34,y:sy-19,width:68,height:38,rx:7,fill:'#16211c',stroke:'#40564c','stroke-width':1.4},sg);
+    txt(sx,sy-1,SITEN[i%SITEN.length],{fill:'#dbe4e0','font-size':11,'font-weight':600,'text-anchor':'middle'},sg);
+    /* dirt reads as a bar under the name, never over it */
+    el('rect',{x:sx-25,y:sy+8,width:50,height:4,rx:2,fill:'#0d1512'},sg);
+    const fill=el('rect',{x:sx-25,y:sy+8,width:0,height:4,rx:2,fill:'var(--amber)'},sg);
+    cl.sites.push({client:cl,name:name+' · '+SITEN[i%SITEN.length],short:SITEN[i%SITEN.length],
+      x:sx,y:sy,dirt:0,fill,g:sg,crew:[],jobOut:false,warned:false});
+  }
+  S.clients.push(cl);
+  /* set directly — never gate a visual on rAF, it can be throttled */
+  g2.style.transition='opacity .8s';g2.setAttribute('opacity',1);
+  return cl}
+const allSites=()=>S.clients.flatMap(c=>c.sites);
+const liveCrew=()=>S.crew;
+
+function hireCleaner(){
+  if(S.cash<CFG.CLEANER_FEE){toast(SAY.noCash,'bad');return null}
+  const sites=allSites();if(!sites.length)return null;
+  S.cash-=CFG.CLEANER_FEE;
+  /* goes to whichever site is most short-handed */
+  const site=sites.slice().sort((a,b)=>(a.crew.length-b.crew.length)||(b.dirt-a.dirt))[0];
+  const name=NAMES[S.crew.length%NAMES.length];
+  const idx=site.crew.length;
+  const cx=site.x+(idx?26:-26), cy=site.y+30;
+  const g2=gr({},site.g);
+  face(g2,cx,cy,13);
+  const c={name,site,x:cx,y:cy,g:g2,busy:0};
+  site.crew.push(c);S.crew.push(c);
+  S.stats.peakCrew=Math.max(S.stats.peakCrew,S.crew.length);
+  toast(SAY.hired(name,site.short),'money');
+  zip(YOU.x,YOU.y,cx,cy,'var(--mint)');pulse(cx,cy);
+  return c}
+
+function hireAdmin(){
+  if(S.cash<CFG.ADMIN_FEE){toast(SAY.noCash,'bad');return null}
+  S.cash-=CFG.ADMIN_FEE;
+  const n=S.admins.length;
+  const name=['Radek','Simona','Bogdan'][n%3];
+  const bx=YOU.x+(n%2?190:-190), by=YOU.y+150+((n/2)|0)*90;
+  const g2=gr({class:'wob'},Lworld);
+  face(g2,bx,by,30,'rgba(232,238,235,.35)');
+  txt(bx,by+46,name,{fill:'var(--label)','font-size':12,'font-weight':600,'text-anchor':'middle'},g2);
+  txt(bx,by+61,'coordinator',{fill:'var(--faint)','font-size':9.5,'text-anchor':'middle'},g2);
+  const line=el('line',{stroke:'var(--sage2)','stroke-width':2,'stroke-linecap':'round',opacity:0},Lbeam);
+  S.admins.push({name,x:bx,y:by,g:g2,line,target:null,prog:0});
+  S.stats.admins=S.admins.length+1;
+  $('hAdm').textContent=S.stats.admins;
+  toast(SAY.adminHired(name),'warn');hint('margin');
+  return true}
+
+/* ---------- items ---------- */
+const KIND={
+  contract:{c:'var(--mint)',l:'C',hold:1.0,w:'Contract'},
+  applicant:{c:'var(--blue)',l:'H',hold:.6,w:'Applicant'},
+  job:{c:'#c9d6d0',l:'!',hold:.5,w:'Job'},
+  admin:{c:'var(--amber)',l:'A',hold:.9,w:'Coordinator'}
+};
+function spawnItem(kind,meta){
+  const K=KIND[kind];meta=meta||{};
+  let sx,sy;
+  if(meta.from){sx=meta.from.x;sy=meta.from.y}
+  else{const a=R(0,Math.PI*2);sx=YOU.x+Math.cos(a)*R(420,540);sy=YOU.y+Math.sin(a)*R(300,400)}
+  sx=Math.max(70,Math.min(1530,sx));sy=Math.max(150,Math.min(950,sy));
+  const g2=gr({},Litems);
+  const flash=el('circle',{r:38,fill:'none',stroke:K.c,'stroke-width':3,opacity:.9},g2);
+  el('rect',{x:-48,y:-21,width:96,height:42,rx:8,fill:'#101a15',stroke:K.c,'stroke-width':1.7},g2);
+  el('circle',{cx:-31,cy:0,r:12,fill:'none',stroke:K.c,'stroke-width':1.4},g2);
+  txt(-31,4.5,K.l,{fill:K.c,'font-size':13,'font-weight':800,'text-anchor':'middle'},g2);
+  txt(-14,-2,meta.title||K.w,{fill:'var(--label)','font-size':10.5,'font-weight':600},g2);
+  txt(-14,11,meta.sub||'',{fill:'var(--faint)','font-size':9},g2);
+  const RR=2*Math.PI*25;
+  const ring=el('circle',{r:25,fill:'none',stroke:'var(--beam)','stroke-width':3.5,'stroke-linecap':'round',
+    'stroke-dasharray':RR,'stroke-dashoffset':RR,transform:'rotate(-90)',opacity:.95},g2);
+  const it={kind,K,g:g2,ring,RR,flash,x:sx,y:sy,prog:0,hold:K.hold,meta,born:0,
+    speed:R(CFG.DRIFT[0],CFG.DRIFT[1]),dead:false,warn:false};
+  S.items.push(it);place(it);return it}
+const place=it=>it.g.setAttribute('transform',`translate(${it.x.toFixed(1)},${it.y.toFixed(1)})`);
+function killItem(it){it.dead=true;it.g.remove();S.items=S.items.filter(x=>x!==it);
+  if(it.kind==='job'&&it.meta.site)it.meta.site.jobOut=false;
+  if(S.target===it)S.target=null}
+
+/* ---------- juice ---------- */
+function floater(x,y,s,col){const t=txt(x,y,s,{fill:col||'var(--beam)','font-size':18,'font-weight':800,'text-anchor':'middle'},Lfloat);
+  let k=0;const iv=setInterval(()=>{k+=.05;t.setAttribute('y',y-k*46);t.setAttribute('opacity',Math.max(0,1-k*1.5));
+    if(k>=.7){clearInterval(iv);t.remove()}},16)}
+function pulse(x,y,col){const c=el('circle',{cx:x,cy:y,r:8,fill:'none',stroke:col||'var(--mint)','stroke-width':2.5,opacity:.9},Lfx);
+  let k=0;const iv=setInterval(()=>{k+=.05;c.setAttribute('r',8+k*90);c.setAttribute('opacity',Math.max(0,.9-k*2.2));
+    if(k>=.45){clearInterval(iv);c.remove()}},16)}
+function zip(x0,y0,x1,y1,col){const l=el('line',{x1:x0,y1:y0,x2:x0,y2:y0,stroke:col||'var(--beam)','stroke-width':3,'stroke-linecap':'round',opacity:.9},Lfx);
+  const t0=performance.now();
+  (function s(now){const f=Math.min(1,(now-t0)/260),e=1-Math.pow(1-f,3);
+    l.setAttribute('x2',x0+(x1-x0)*e);l.setAttribute('y2',y0+(y1-y0)*e);
+    l.setAttribute('x1',x0+(x1-x0)*Math.max(0,e-.35));l.setAttribute('y1',y0+(y1-y0)*Math.max(0,e-.35));
+    if(f<1)requestAnimationFrame(s);else l.remove()})(t0)}
+function toast(m,cls){const t=document.createElement('div');t.className='toast '+(cls||'');t.textContent=m;
+  const b=$('toasts');b.appendChild(t);requestAnimationFrame(()=>t.classList.add('show'));
+  while(b.children.length>4)b.firstChild.remove();
+  setTimeout(()=>{t.classList.remove('show');setTimeout(()=>t.remove(),300)},3900)}
+function hint(k){if(S.hints[k])return;S.hints[k]=1;
+  $('hint').innerHTML=SAY.hint[k].replace('\n','<br>');$('hint').style.display='block';S.hintT=5.5}
+
+/* ---------- resolve ---------- */
+function chainUp(n){S.chain=Math.min(CFG.CHAIN_MAX,S.chain+(n||1));S.chainT=CFG.CHAIN_WIN;
+  const c=$('combo');c.textContent='×'+S.chain;c.style.opacity=S.chain>1?1:0}
+function resolve(it){
+  const clutch=Math.hypot(it.x-YOU.x,it.y-YOU.y)<CFG.CLUTCH_DIST;
+  S.stats.acts++;chainUp(clutch?2:1);
+  if(clutch){S.focus=Math.min(CFG.FOCUS,S.focus+CFG.CLUTCH_FOCUS);floater(it.x,it.y-28,'CLUTCH','var(--amber)')}
+  if(it.kind==='contract'){
+    const n=it.meta.n;const cl=addClient(n);
+    if(cl){toast(SAY.won(cl.name,n),'money');zip(it.x,it.y,cl.x,cl.y,'var(--mint)');pulse(cl.x,cl.y);
+      if(!S.crew.length)hint('hire')}
+  }else if(it.kind==='applicant'){
+    hireCleaner();
+  }else if(it.kind==='job'){
+    const site=it.meta.site;
+    if(site){
+      const free=site.crew.find(c=>c.busy<=0);
+      if(free){free.busy=1.6;zip(it.x,it.y,free.x,free.y,'#c9d6d0');pulse(free.x,free.y);
+        site.dirt=Math.max(0,site.dirt-CFG.JOB_CLEAN)}
+      else{ /* nobody assigned — you did the paperwork, the dirt stays */
+        floater(site.x,site.y-26,'no one there','var(--red)');site.dirt=Math.max(0,site.dirt-.12)}
+    }
+  }else if(it.kind==='admin'){
+    hireAdmin();
+  }
+  const pts=0; /* score is money in this build */
+  if(!clutch)floater(it.x,it.y,'✓','var(--beam)');
+  bumpE(-.05);killItem(it)}
+
+function hitDesk(it){
+  S.shake+=6;S.chain=0;$('combo').style.opacity=0;bumpE(.1);
+  if(it.kind==='job'&&it.meta.site){it.meta.site.dirt=Math.min(1,it.meta.site.dirt+.1)}
+  if(it.kind==='contract')toast('The contract lapsed. Someone else signed it.','warn');
+  if(it.kind==='applicant')toast('The applicant took another job. They always do.','warn');
+  killItem(it)}
+
+function bumpE(d){S.entropy=Math.max(.35,Math.min(1,S.entropy+d))}
+
+/* ---------- input ---------- */
+function toView(ev){const r=svg.getBoundingClientRect(),s=Math.min(r.width/1600,r.height/1000);
+  return{x:(ev.clientX-r.left-(r.width-1600*s)/2)/s,y:(ev.clientY-r.top-(r.height-1000*s)/2)/s}}
+function move(ev){const p=toView(ev);S.mx=p.x;S.my=p.y}
+svg.addEventListener('pointermove',move);
+svg.addEventListener('pointerdown',e=>{e.preventDefault();move(e);S.down=true});
+addEventListener('pointerup',()=>{S.down=false});
+addEventListener('pointercancel',()=>{S.down=false});
+addEventListener('blur',()=>{S.down=false});
+const beamLine=el('line',{stroke:'var(--beam)','stroke-width':2.5,'stroke-linecap':'round',opacity:0},Lbeam);
+const beamDot=el('circle',{r:7,fill:'none',stroke:'var(--beam)','stroke-width':2,opacity:0},Lbeam);
+
+/* ---------- day / spawn ---------- */
+function newDay(d){
+  $('hDay').textContent=d;
+  if(S.contractIdx<CFG.CONTRACT_DAYS.length&&d>=CFG.CONTRACT_DAYS[S.contractIdx]&&S.clients.length<SLOTS.length){
+    const n=CFG.CONTRACT_SITES[S.contractIdx];S.contractIdx++;
+    spawnItem('contract',{n,title:'Contract',sub:n+' site'+(n>1?'s':'')+' · '+money(n*CFG.SITE_REV)+'/day'});
+    if(d===1)hint('first');
+  }
+}
+function spawnTick(dt){
+  /* jobs come from dirty sites — need-driven, so cause and effect is legible */
+  allSites().forEach(s=>{
+    if(!s.jobOut&&s.dirt>=CFG.JOB_AT){
+      s.jobOut=true;
+      spawnItem('job',{site:s,title:s.short,sub:s.client.name.split(' ')[0],from:s});
+      if(!S.hints.job)hint('job');
+    }});
+  /* applicants: more often when short-handed */
+  S.applicantT-=dt;
+  if(S.applicantT<=0){
+    const need=allSites().length-S.crew.length;
+    S.applicantT=CFG.APPLICANT_GAP*(need>0?.65:2.2);
+    if(allSites().length&&S.cash>=CFG.CLEANER_FEE)
+      spawnItem('applicant',{title:'Applicant',sub:money(CFG.CLEANER_FEE)+' now · '+money(CFG.CLEANER_WAGE)+'/day'});
+  }
+  /* the offer that looks like salvation */
+  if(!S.adminOffered&&S.cash>=CFG.ADMIN_OFFER_CASH&&allSites().length>=4){
+    S.adminOffered=true;
+    spawnItem('admin',{title:'Coordinator',sub:money(CFG.ADMIN_FEE)+' now · '+money(CFG.ADMIN_WAGE)+'/day'});
+    toast(SAY.adminOffer,'warn');hint('admin');
+  }
+  if(S.adminOffered&&S.admins.length&&S.cash>=CFG.ADMIN_OFFER_CASH*1.8&&rnd()<dt*.06){
+    spawnItem('admin',{title:'Coordinator',sub:money(CFG.ADMIN_FEE)+' now · '+money(CFG.ADMIN_WAGE)+'/day'});
+  }
+}
+
+/* ---------- loop ---------- */
+let last=0;
+function loop(ts){
+  requestAnimationFrame(loop);
+  if(!last)last=ts;let dt=Math.min(.05,(ts-last)/1000);last=ts;
+  if(DEBUG&&window.FAST)dt*=3;
+  if(!S.run||S.over)return;
+  S.t+=dt;
+  const d=Math.floor(S.t/CFG.DAY)+1;if(d!==S.day){S.day=d;newDay(d)}
+  spawnTick(dt);
+
+  /* ---- money: continuous accrual, shown as a per-day rate ---- */
+  const sites=allSites();
+  const rev=sites.length*CFG.SITE_REV;
+  const wag=S.crew.length*CFG.CLEANER_WAGE+S.admins.length*CFG.ADMIN_WAGE;
+  S.rate=rev-wag;
+  const perSec=dt/CFG.DAY;
+  S.cash+=S.rate*perSec;
+  S.stats.revTotal+=rev*perSec;S.stats.wageTotal+=wag*perSec;
+  S.stats.adminSpend+=S.admins.length*CFG.ADMIN_WAGE*perSec;
+  S.stats.peakSites=Math.max(S.stats.peakSites,sites.length);
+  $('hCash').textContent=money(S.cash);
+  const rEl=$('rate');
+  rEl.textContent=(S.rate>=0?'+':'−')+money(Math.abs(S.rate))+'/day';
+  rEl.className=S.rate>=0?'up':'down';
+  $('hSites').textContent=sites.length;$('hCrew').textContent=S.crew.length;
+  if(S.rate<0&&!S.marginWarned&&S.admins.length){S.marginWarned=true;toast(SAY.marginFlip,'bad')}
+  if(S.cash<0)return end('broke');
+
+  /* ---- beam ---- */
+  const dryMul=S.dry?CFG.DRY:1, chainMul=1+S.chain*.05;
+  let tgt=null;
+  if(S.down){let bd=1e9;
+    S.items.forEach(it=>{const dd=Math.hypot(it.x-S.mx,it.y-S.my);if(dd<58&&dd<bd){bd=dd;tgt=it}})}
+  S.target=tgt;
+  if(tgt){
+    if(S.focus>0)S.focus=Math.max(0,S.focus-CFG.DRAIN*dt);
+    tgt.prog+=dt*(S.focus>0?dryMul:CFG.DRY)*chainMul/tgt.hold;
+    tgt.ring.setAttribute('stroke-dashoffset',tgt.RR*(1-Math.min(1,tgt.prog)));
+    if(tgt.prog>=1)resolve(tgt);
+  }else{
+    const pen=1-S.admins.length*CFG.ADMIN_REGEN_PEN;
+    S.focus=Math.min(CFG.FOCUS,S.focus+CFG.REGEN*Math.max(.5,pen)*dt);
+  }
+  if(!S.dry&&S.focus<=0){S.dry=true;hint('focus')}
+  if(S.dry&&S.focus>28)S.dry=false;
+  focusRing.setAttribute('stroke-dashoffset',FR*(1-S.focus/CFG.FOCUS));
+  focusRing.setAttribute('stroke',S.dry?'var(--red)':'var(--beam)');
+  S.items.forEach(it=>{if(it!==tgt&&it.prog>0){it.prog=Math.max(0,it.prog-dt*.85);
+    it.ring.setAttribute('stroke-dashoffset',it.RR*(1-it.prog))}});
+  const sb=S.down;
+  beamLine.setAttribute('opacity',sb?.75:0);beamDot.setAttribute('opacity',sb?.9:0);
+  if(sb){beamLine.setAttribute('x1',YOU.x);beamLine.setAttribute('y1',YOU.y);
+    beamLine.setAttribute('x2',S.mx);beamLine.setAttribute('y2',S.my);
+    beamDot.setAttribute('cx',S.mx);beamDot.setAttribute('cy',S.my);beamDot.setAttribute('r',tgt?13:7)}
+
+  /* ---- items drift ---- */
+  S.items.slice().forEach(it=>{
+    it.born+=dt;
+    if(it.born<.42){it.flash.setAttribute('r',38-it.born*46);it.flash.setAttribute('opacity',.9-it.born*2.1);return}
+    else if(it.flash.parentNode)it.flash.remove();
+    const dx=YOU.x-it.x,dy=YOU.y-it.y,dd=Math.hypot(dx,dy)||1;
+    it.x+=dx/dd*it.speed*dt;it.y+=dy/dd*it.speed*dt;place(it);
+    if(dd<CFG.DESK+120&&!it.warn){it.warn=true;it.g.querySelector('rect').setAttribute('stroke-width',3)}
+    if(dd<CFG.DESK)hitDesk(it)});
+
+  /* ---- extra coordinators: real help, real cost ---- */
+  S.admins.forEach(a=>{
+    if(!a.target||a.target.dead)
+      {a.target=S.items.filter(i=>i.kind==='job').sort((p,q)=>
+        Math.hypot(p.x-a.x,p.y-a.y)-Math.hypot(q.x-a.x,q.y-a.y))[0]||null;a.prog=0}
+    if(a.target){a.line.setAttribute('opacity',.4);a.line.setAttribute('x1',a.x);a.line.setAttribute('y1',a.y);
+      a.line.setAttribute('x2',a.target.x);a.line.setAttribute('y2',a.target.y);
+      a.prog+=dt*CFG.ADMIN_SPEED/a.target.hold;
+      if(a.prog>=1){resolve(a.target);a.target=null;a.prog=0}}
+    else a.line.setAttribute('opacity',0)});
+
+  /* ---- buildings get dirty; clients notice ---- */
+  S.clients.slice().forEach(cl=>{
+    let worst=0;
+    cl.sites.forEach(s=>{
+      const staffed=s.crew.length>0;
+      s.dirt=Math.min(1,s.dirt+CFG.DIRT*dt*(staffed?1:1.5));
+      s.crew.forEach(c=>{if(c.busy>0)c.busy-=dt});
+      s.fill.setAttribute('width',50*s.dirt);
+      s.fill.setAttribute('fill',s.dirt>.75?'var(--red)':'var(--amber)');
+      worst=Math.max(worst,s.dirt);
+      if(!staffed&&!s.warned&&s.dirt>.5){s.warned=true;toast(SAY.understaffed(s.short),'warn')}
+      if(s.dirt>=CFG.FILTHY&&!s.filthyWarned){s.filthyWarned=true;toast(SAY.filthy(s.short),'bad');
+        setTimeout(()=>{s.filthyWarned=false},7000)}
+    });
+    cl.sat=Math.max(0,Math.min(1,cl.sat+(worst>=CFG.FILTHY?-CFG.SAT_DROP*dt:CFG.SAT_RECOVER*dt)));
+    cl.satBar.setAttribute('width',84*cl.sat);
+    cl.satBar.setAttribute('fill',cl.sat<.35?'var(--red)':cl.sat<.7?'var(--amber)':'var(--mint)');
+    if(cl.sat<=0){ /* contract cancelled */
+      toast(`${cl.name} cancelled. ${cl.sites.length} site${cl.sites.length>1?'s':''} gone.`,'bad');
+      cl.sites.forEach(s=>{s.crew.forEach(c=>{S.crew=S.crew.filter(x=>x!==c)})});
+      S.items.filter(i=>i.meta.site&&i.meta.site.client===cl).forEach(killItem);
+      cl.g.remove();S.clients=S.clients.filter(x=>x!==cl);S.shake+=8;
+      if(!S.clients.length&&S.day>2)return end('clients');
+    }
+  });
+
+  /* chain + shake + entropy */
+  if(S.chainT>0){S.chainT-=dt;if(S.chainT<=0){S.chain=0;$('combo').style.opacity=0}}
+  S.shake=Math.max(0,S.shake-dt*20);
+  $('stage').style.transform=S.shake>.2?`translate(${(rnd()-.5)*S.shake}px,${(rnd()-.5)*S.shake}px)`:'';
+  S.entropy=Math.max(.35,S.entropy-dt*.012);
+  const e=Math.max(S.entropy,.35+Math.min(.55,S.items.length*.05));
+  document.documentElement.style.setProperty('--e',e.toFixed(3));
+  Lgrime.setAttribute('opacity',((e-.35)*.8).toFixed(3));
+  $('stage').style.filter=`saturate(${(1-(e-.35)*.35).toFixed(3)})`;
+  if(S.hintT>0){S.hintT-=dt;if(S.hintT<=0)$('hint').style.display='none'}
+}
+
+/* ---------- run control ---------- */
+function start(){$('title').classList.remove('show');S.run=true;newDay(1);if(DEBUG)dbg()}
+function end(reason){if(S.over)return;S.over=true;S.run=false;S.down=false;
+  $('deathLine').innerHTML=SAY.died[reason].replace('\n','<br>');
+  $('death').classList.add('show');
+  setTimeout(()=>{$('death').classList.remove('show');epilogue()},2500)}
+$('startBtn').addEventListener('click',start);
+$('againBtn').addEventListener('click',()=>location.reload());
+
+/* ---------- epilogue ---------- */
+function epilogue(){
+  Litems.innerHTML='';Lbeam.innerHTML='';$('hint').style.display='none';$('toasts').innerHTML='';
+  $('combo').style.opacity=0;$('stage').style.transform='';
+  document.querySelectorAll('.wob').forEach(n=>n.classList.remove('wob'));
+  [Lgrime,Lworld,Lfx,Lfloat].forEach(l=>{l.style.transition='opacity 1.3s';l.style.opacity=0});
+  $('stage').style.transition='background 1.6s, filter 1.2s';$('stage').style.filter='saturate(1)';
+  $('stage').style.background='radial-gradient(120% 140% at 50% 46%,#16211d 0%,var(--ink) 60%,#0a0f0d 100%)';
+  $('hud').style.transition='opacity .7s';$('hud').style.opacity=0;
+  document.documentElement.style.setProperty('--e',0);
+  setTimeout(()=>{[Lgrime,Lworld,Lfx,Lfloat].forEach(l=>l.style.display='none');claaro()},1350)}
+function claaro(){
+  const L=gr({opacity:0},svg),H={x:800,y:470};
+  const G=[{l:'Facility Manager',x:250,y:250},{l:'Cleaning Crew',x:250,y:690},
+           {l:'Clients',x:1350,y:250},{l:'Claaro.AI',x:1350,y:690}];
+  const sp=G.map(o=>el('path',{d:`M${o.x+70} ${o.y} C${(o.x+H.x)/2} ${o.y} ${(o.x+H.x)/2} ${H.y} ${H.x} ${H.y}`,
+    fill:'none',stroke:'rgba(255,255,255,.2)','stroke-width':2},L));
+  el('circle',{cx:H.x,cy:H.y,r:148,fill:'rgba(50,220,151,.07)'},L);
+  el('circle',{cx:H.x,cy:H.y,r:94,fill:'var(--mint)'},L);
+  const dots=gr({fill:'rgba(14,20,19,.16)'},L);
+  for(let a=0;a<360;a+=15)for(let rr=20;rr<=78;rr+=15)
+    el('circle',{cx:H.x+Math.cos(a*Math.PI/180)*rr,cy:H.y+Math.sin(a*Math.PI/180)*rr,r:1.6},dots);
+  const mk=gr({transform:`translate(${H.x},${H.y})`},L);
+  el('path',{d:'M19 33 a38 38 0 1 1 14 -29',fill:'none',stroke:'var(--ink)','stroke-width':17,'stroke-linecap':'round'},mk);
+  el('rect',{x:21,y:21,width:20,height:20,rx:6,fill:'var(--ink)'},mk);
+  G.forEach(o=>{const g2=gr({},L);
+    el('circle',{cx:o.x,cy:o.y,r:52,fill:'#16211d',stroke:'rgba(255,255,255,.22)','stroke-width':1.5},g2);
+    if(o.l==='Claaro.AI'){el('circle',{cx:o.x,cy:o.y,r:20,fill:'none',stroke:'var(--mint)','stroke-width':3},g2);
+      el('circle',{cx:o.x,cy:o.y,r:5,fill:'var(--mint)'},g2)}
+    else{const id='z'+o.x+o.y,cp=el('clipPath',{id},DEFS);el('circle',{cx:o.x,cy:o.y,r:52},cp);
+      const sil=gr({'clip-path':`url(#${id})`,fill:'#48584f'},g2);
+      el('circle',{cx:o.x,cy:o.y-10,r:15},sil);el('path',{d:`M${o.x-32} ${o.y+52} a32 30 0 0 1 64 0 z`},sil)}
+    txt(o.x,o.y+80,o.l,{fill:'#fff','font-size':18,'font-weight':700,'text-anchor':'middle','font-family':'var(--f-brand)'},g2)});
+  L.style.transition='opacity 1.1s';requestAnimationFrame(()=>L.style.opacity=1);
+  $('epiTag').style.display='block';$('epiCount').style.display='block';
+  let alive=true;
+  (function flow(){if(!alive)return;const a=(Math.random()*4)|0;let b=(Math.random()*4)|0;if(b===a)b=(b+1)%4;
+    hop(sp[a],true,()=>hop(sp[b],false));setTimeout(flow,470+Math.random()*420)})();
+  function hop(path,toHub,next){const dot=el('circle',{r:7,fill:'var(--mint)'},L),t0=performance.now(),Lp=path.getTotalLength();
+    (function s(now){const f=Math.min(1,(now-t0)/670),e=f<.5?2*f*f:1-Math.pow(-2*f+2,2)/2;
+      const p=path.getPointAtLength(Lp*(toHub?e:1-e));dot.setAttribute('cx',p.x);dot.setAttribute('cy',p.y);
+      if(f<1)requestAnimationFrame(s);else{dot.remove();next&&next()}})(t0)}
+  setTimeout(()=>{alive=false;showScore()},CFG.EPI_SEC*1000)}
+
+/* ---------- score ---------- */
+const LB={key:'shift-happens-lb',
+  all(){try{return JSON.parse(localStorage.getItem(this.key)||'[]')}catch(e){return[]}},
+  submit(n,e){const l=this.all();l.push({n,...e});l.sort((a,b)=>b.score-a.score);
+    localStorage.setItem(this.key,JSON.stringify(l.slice(0,50)));return l}};
+function showScore(){
+  const st=S.stats, sites=Math.max(1,st.peakSites);
+  const yourMargin=(st.revTotal-st.wageTotal)/Math.max(1,S.day-1)/sites;
+  const claaroMargin=CFG.SITE_REV-CFG.CLEANER_WAGE;   // no coordination overhead
+  $('scoreH').textContent=`You lasted ${S.day} days and reached ${st.peakSites} sites.`;
+  $('scoreLede').textContent=`The same ${st.peakSites} buildings, the same ${S.day} days, two ways of running them.`;
+  $('sSites').textContent=st.peakSites;$('kSites').textContent=st.peakSites;
+  $('sAdm').textContent=st.admins;
+  $('sAdmCost').textContent=money(st.adminSpend);
+  $('sMargin').textContent=money(yourMargin);
+  $('kMargin').textContent=money(claaroMargin);
+  $('sActs').textContent=st.acts;
+  $('score').classList.add('show')}
+$('saveBtn').addEventListener('click',()=>{
+  const name=$('nameIn').value.trim()||'Anonymous operator';
+  const sc=S.stats.peakSites*100+(S.day-1)*10;
+  const list=LB.submit(name,{score:sc,days:S.day,sites:S.stats.peakSites});
+  const rows=$('lbRows');rows.innerHTML='';
+  const mine=list.findIndex(e=>e.n===name&&e.score===sc);
+  list.slice(0,8).forEach((e,i)=>{const dv=document.createElement('div');
+    dv.className='lbRow'+(i===mine?' me':'');
+    dv.innerHTML=`<span>#${i+1} <b>${e.n.replace(/[<>&]/g,'')}</b></span><span>${e.sites||0} sites · ${e.days} days</span>`;
+    rows.appendChild(dv)});
+  $('lb').style.display='block';$('saveBtn').disabled=true;$('saveBtn').style.opacity=.5});
+document.addEventListener('visibilitychange',()=>{last=0;S.down=false});
+function dbg(){window.FAST=false;
+  const b=document.createElement('button');b.textContent='×3';
+  b.style.cssText='position:fixed;right:12px;bottom:12px;z-index:99;background:#1a2620;color:#c9d6d0;border:1px solid #6b7d75;border-radius:6px;padding:6px 12px;cursor:pointer';
+  b.onclick=()=>{window.FAST=!window.FAST;b.textContent=window.FAST?'×3 ON':'×3'};
+  document.body.appendChild(b);
+  addEventListener('keydown',ev=>{
+    if(ev.key==='e')end('broke');
+    if(ev.key==='c')spawnItem('contract',{n:2,title:'Contract',sub:'2 sites'});
+    if(ev.key==='a')spawnItem('applicant',{title:'Applicant',sub:'€150 now'});
+    if(ev.key==='d')spawnItem('admin',{title:'Coordinator',sub:'€400 now · €260/day'});
+    if(ev.key==='m')S.cash+=2000})}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

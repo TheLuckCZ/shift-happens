@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Shift Happens — the margin is the message</title>
+<meta name="description" content="Win contracts. Hire cleaners. Keep the sites clean. Discover that hiring help costs almost exactly what it saves. A deadpan arcade about running facilities without a system.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* ── tokens: entity sheet panel F ───────────────────────────── */
+  :root{
+    /* chaos pole */
+    --murk:#07100c; --sage:#6b7d75; --sage2:#8a9c94; --chalk:#c9d6d0;
+    --label:#c3cec9; --faint:#5f6f68; --beam:#f0e6c8; --red:#e5735a;
+    --amber:#e5a94f; --blue:#60a5fa; --ink-line:#22322a; --panel:#0a130f; --edge:#16211d;
+    /* Claaro pole — earned */
+    --mint:#32DC97; --mint-dk:#28C886; --ink:#0E1413; --ink-70:#344038;
+    --ink-40:#7C8980; --paper:#F4F2EC; --warm:#EDEAE2;
+    --f-chaos:'Plus Jakarta Sans',system-ui,sans-serif;
+    --f-brand:'Figtree',system-ui,sans-serif;
+    --e:.35;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden}
+  body{background:#050b08;color:var(--chalk);font-family:var(--f-chaos);
+    -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;
+    user-select:none;-webkit-user-select:none;cursor:crosshair}
+  #stage{position:fixed;inset:0;background:radial-gradient(1200px 800px at 30% 0%,#0b1712 0%,#050b08 60%)}
+  svg{display:block;width:100%;height:100%;touch-action:none}
+  text{pointer-events:none}
+  /* entity sheet: wob is a slow rotation, not a jitter */
+  @keyframes wob{0%,100%{transform:rotate(calc(var(--e) * -0.5deg))}50%{transform:rotate(calc(var(--e) * 0.5deg))}}
+  .wob{animation:wob 3.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+  @keyframes beamGlow{0%,100%{opacity:.55}50%{opacity:.95}}
+  @keyframes flow{from{offset-distance:0%}to{offset-distance:100%}}
+  @media (prefers-reduced-motion:reduce){.wob{animation:none}}
+
+  /* ── HUD ─────────────────────────────────────────────────────── */
+  #hud{position:fixed;inset:0;pointer-events:none}
+  /* centre-top is owned by the SVG score + the job-market orbit around it */
+  #top{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;
+    align-items:flex-start;padding:28px 34px;gap:24px}
+  .hLab{font:700 11px/1 var(--f-chaos);letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+  .hVal{font:800 30px/1.1 var(--f-chaos);color:var(--chalk);margin-top:5px}
+  .hDiv{width:1px;height:38px;background:var(--ink-line)}
+  #left{display:flex;gap:26px;align-items:center}
+  #rate{font:700 13px/1 var(--f-chaos);margin-top:7px}
+  .up{color:var(--mint)}.down{color:var(--red)}
+  #chainWrap{text-align:center;opacity:0;transition:opacity .18s}
+  #chainN{font:800 44px/1 var(--f-chaos);color:var(--amber)}
+  #chainL{font:700 11px/1 var(--f-chaos);letter-spacing:.18em;text-transform:uppercase;color:var(--amber);opacity:.6;margin-top:4px}
+  #right{text-align:right}
+  #entBar{width:200px;height:8px;border-radius:999px;background:var(--edge);overflow:hidden;margin:6px 0 0 auto}
+  #entFill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--amber),var(--red));width:0%}
+  #entTxt{font:600 13px/1 var(--f-chaos);color:var(--label);margin-top:6px}
+  #counts{font:600 12px/1 var(--f-chaos);color:var(--faint);margin-top:10px}
+  #tip{position:absolute;bottom:22px;left:34px;display:flex;gap:8px;align-items:center}
+  #tip i{width:9px;height:9px;border-radius:50%;background:var(--beam);display:block}
+  #tip span{font:400 13px/1 var(--f-chaos);color:var(--sage2)}
+  #toasts{position:absolute;right:34px;bottom:22px;display:flex;flex-direction:column;gap:6px;
+    max-width:min(390px,42vw);align-items:flex-end}
+  .toast{background:rgba(10,19,15,.92);border:1px solid var(--edge);border-left:3px solid var(--sage);
+    color:var(--label);font-size:12.5px;line-height:1.45;padding:8px 12px;border-radius:8px;
+    opacity:0;transform:translateY(6px);transition:.25s;text-align:right}
+  .toast.show{opacity:1;transform:none}
+  .toast.bad{border-left-color:var(--red)}.toast.warn{border-left-color:var(--amber)}
+  .toast.good{border-left-color:var(--mint)}.toast.money{border-left-color:var(--blue)}
+  #hint{position:absolute;left:50%;bottom:64px;transform:translateX(-50%);display:none;
+    background:rgba(7,16,12,.94);border:1px dashed var(--sage);color:var(--chalk);
+    font:600 13.5px/1.5 var(--f-chaos);padding:10px 20px;border-radius:12px;text-align:center;max-width:min(640px,90vw)}
+
+  /* ── screens ─────────────────────────────────────────────────── */
+  .screen{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:50}
+  .screen.show{display:flex}
+  #title{background:radial-gradient(1200px 800px at 30% 0%,#0b1712 0%,#050b08 60%)}
+  .panel{max-width:720px;width:calc(100vw - 40px);text-align:center;padding:28px}
+  #title .brandRow{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:22px}
+  #title .mk{width:26px;height:26px;border-radius:7px;background:var(--mint);display:flex;align-items:center;justify-content:center}
+  #title .mk i{width:9px;height:9px;border-radius:3px;background:var(--ink);display:block}
+  #title .brandRow span{font:700 13px/1 var(--f-chaos);letter-spacing:.22em;text-transform:uppercase;color:var(--sage)}
+  #title h1{font:800 clamp(38px,7vw,64px)/1.02 var(--f-chaos);letter-spacing:-.03em;color:#e8eeeb}
+  #title .sub{margin-top:18px;color:var(--sage2);font-size:19px;line-height:1.6}
+  #title .sub b{color:var(--chalk);font-weight:600}
+  .keys{margin:26px auto 0;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;max-width:660px}
+  .keys span{font:600 13px/1 var(--f-chaos);color:var(--label);border:1px solid var(--ink-line);
+    background:var(--panel);padding:10px 16px;border-radius:999px;display:flex;align-items:center;gap:9px}
+  .keys i{width:11px;height:11px;border-radius:50%;display:block}
+  .btn{pointer-events:auto;cursor:pointer;display:inline-block;margin-top:30px;background:var(--panel);
+    border:1px solid var(--sage2);color:var(--chalk);font:700 16px/1 var(--f-chaos);
+    letter-spacing:.04em;padding:15px 36px;border-radius:999px;transition:.15s}
+  .btn:hover{background:var(--edge);transform:translateY(-1px)}
+  #title .foot{margin-top:24px;color:var(--faint);font-size:13px}
+  /* registration */
+  #reg{display:none;margin-top:26px;flex-direction:column;align-items:center}
+  #reg.show{display:flex}
+  #reg label{font:700 11px/1 var(--f-chaos);letter-spacing:.16em;text-transform:uppercase;
+    color:var(--faint);margin:18px 0 10px}
+  #coName{width:min(420px,80vw);text-align:center;background:var(--panel);color:var(--chalk);
+    border:1px solid var(--ink-line);border-radius:12px;padding:15px 18px;outline:none;
+    font:700 19px/1 var(--f-chaos);letter-spacing:-.01em}
+  #coName::placeholder{color:#3f4d46;font-weight:500}
+  #coName:focus{border-color:var(--sage2)}
+  .sugg{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:14px;max-width:520px}
+  .sugg button{cursor:pointer;font:600 12.5px/1 var(--f-chaos);color:var(--sage2);
+    background:transparent;border:1px solid var(--ink-line);border-radius:999px;padding:8px 14px}
+  .sugg button:hover{border-color:var(--sage2);color:var(--chalk)}
+  #reg .btn{border:none}
+
+  /* fail card — entity sheet END STATES */
+  #death{background:radial-gradient(700px 500px at 50% 40%,#1a0f0c 0%,#07100c 70%)}
+  #death .eyebrow{font:700 12px/1 var(--f-chaos);letter-spacing:.22em;text-transform:uppercase;color:var(--red)}
+  #death h2{font:800 40px/1.1 var(--f-chaos);color:#e8eeeb;margin-top:10px}
+  #death p{font:400 16px/1.6 var(--f-chaos);color:var(--sage2);max-width:440px;margin:16px auto 0}
+
+  #epiCap{position:fixed;bottom:34px;left:0;right:0;text-align:center;z-index:45;display:none}
+  #epiCap b{display:block;font:700 26px/1.2 var(--f-brand);color:var(--paper);letter-spacing:-.01em}
+  #epiCap span{display:block;font:400 16px/1.4 var(--f-brand);color:var(--ink-40);margin-top:6px}
+
+  #score .card{pointer-events:auto;background:var(--paper);color:var(--ink);border-radius:24px;
+    max-width:680px;width:calc(100vw - 34px);padding:32px;font-family:var(--f-brand);text-align:left;
+    max-height:calc(100vh - 44px);overflow:auto}
+  #score{background:rgba(8,12,10,.55)}
+  #score .eyebrow{font:700 11.5px/1 var(--f-brand);letter-spacing:.16em;text-transform:uppercase;color:var(--mint-dk)}
+  #score h2{font:800 clamp(23px,4vw,31px)/1.15 var(--f-brand);letter-spacing:-.02em;margin-top:8px}
+  #score .lede{margin-top:8px;color:var(--ink-70);font-size:15px;line-height:1.6}
+  table{width:100%;border-collapse:collapse;margin-top:20px;font-size:14.5px}
+  th{font:700 11px/1 var(--f-brand);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-40);
+    text-align:right;padding:0 2px 8px;border-bottom:1.5px solid rgba(14,20,19,.12)}
+  th:first-child{text-align:left}
+  td{padding:9px 2px;border-bottom:1px solid rgba(14,20,19,.07);color:var(--ink-70);text-align:right}
+  td:first-child{text-align:left;color:var(--ink);font-weight:600}
+  td.cv{font-weight:700;color:#b3543f}td.kv{font-weight:800;color:var(--mint-dk)}
+  #score .row{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;align-items:center}
+  #nameIn{flex:1;min-width:150px;font:15px var(--f-brand);padding:12px 14px;border-radius:12px;
+    border:1.5px solid rgba(14,20,19,.18);background:#fff;color:var(--ink);outline:none}
+  #nameIn:focus{border-color:var(--mint)}
+  .bbtn{cursor:pointer;font:700 15px var(--f-brand);border:none;padding:12px 22px;border-radius:999px}
+  .bbtn.mint{background:var(--mint);color:var(--ink)}.bbtn.mint:hover{background:var(--mint-dk)}
+  .bbtn.ghost{background:transparent;color:var(--ink-70);border:1.5px solid rgba(14,20,19,.18)}
+  #lb{margin-top:16px;display:none}
+  #lb h3{font:700 11.5px/1 var(--f-brand);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-40);margin-bottom:8px}
+  .lbRow{display:flex;justify-content:space-between;font-size:14px;padding:7px 10px;border-radius:10px;color:var(--ink-70)}
+  .lbRow b{color:var(--ink)}.lbRow.me{background:rgba(50,220,151,.14)}
+  #score .cta{margin-top:18px;padding-top:16px;border-top:1.5px solid rgba(14,20,19,.1);
+    display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+  #score .cta p{font-size:14px;color:var(--ink-70);max-width:350px;line-height:1.5}
+  #rotate{position:fixed;inset:0;background:var(--murk);z-index:90;display:none;align-items:center;
+    justify-content:center;text-align:center;padding:30px;font-size:16px;line-height:1.6}
+  @media (orientation:portrait) and (max-width:760px){#rotate{display:flex}}
+</style>
+</head>
+<body>
+<div id="stage"><svg id="game" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid meet"></svg></div>
+
+<div id="hud">
+  <div id="top">
+    <div id="chainWrap"><div id="chainN">×1</div><div id="chainL">chain</div></div>
+    <div id="right">
+      <div class="hLab">Entropy</div>
+      <div id="entBar"><div id="entFill"></div></div>
+      <div id="entTxt">0.35 · steady</div>
+      <div id="counts">0 sites · 0 cleaners · 1 coordinator</div>
+    </div>
+  </div>
+  <div id="hint"></div>
+  <div id="tip"><i></i><span>Hold pointer to beam · resolve items before they cross the desk line</span></div>
+  <div id="toasts"></div>
+</div>
+
+<div id="epiCap"><b>One calm system. Every shift, handled.</b><span>Claaro — facility operations, coordinated.</span></div>
+
+<div class="screen show" id="title"><div class="panel">
+  <div class="brandRow"><div class="mk"><i></i></div><span>Claaro · Game</span></div>
+  <h1>Shift Happens</h1>
+  <div id="intro">
+    <p class="sub"><b>Start with nothing. Build a cleaning company.</b><br>
+      Win contracts. Hire cleaners. Keep the buildings clean.<br>
+      Everything goes through you, because there is nowhere else for it to go.</p>
+    <div class="keys">
+      <span><i style="background:#32DC97"></i>Contract — a client &amp; their sites</span>
+      <span><i style="background:#c9d6d0"></i>Report — proof the work happened</span>
+      <span><i style="background:#60a5fa"></i>The job market drifts past the top</span>
+      <span><i style="background:#e5a94f"></i>Every hire has its own daily rate</span>
+    </div>
+    <a class="btn" id="startBtn">Register the company</a>
+    <p class="foot">Margins are thin. Help is affordable. Those two facts are related.</p>
+  </div>
+  <form id="reg" autocomplete="off">
+    <p class="sub" style="margin-bottom:4px">Every empire needs a name on the van.</p>
+    <label for="coName">Registered company name</label>
+    <input id="coName" maxlength="24" placeholder="Brightwell Facilities Ltd" autocomplete="off" spellcheck="false">
+    <div class="sugg">
+      <button type="button">Brightwell Facilities</button>
+      <button type="button">Apex Hygiene Group</button>
+      <button type="button">Sparkle &amp; Sons</button>
+      <button type="button">Meridian Cleaning Co.</button>
+    </div>
+    <button class="btn" id="goBtn" type="submit">Start trading</button>
+    <p class="foot">You can change it later, in the sense that you cannot.</p>
+  </form>
+</div></div>
+
+<div class="screen" id="death"><div class="panel">
+  <svg id="deathMark" viewBox="-80 -80 160 160" width="150" height="150" style="margin-bottom:6px"></svg>
+  <div class="eyebrow">Shift over</div>
+  <h2 id="deathTitle">Focus depleted</h2>
+  <p id="deathLine"></p>
+</div></div>
+
+<div class="screen" id="score"><div class="card">
+  <div class="eyebrow" id="scoreEyebrow">Closing accounts</div>
+  <h2 id="scoreH">You lasted 14 days.</h2>
+  <p class="lede" id="scoreLede">The same contracts, the same buildings, two ways of running them.</p>
+  <table>
+    <tr><th>&nbsp;</th><th>You, by hand</th><th>With Claaro</th></tr>
+    <tr><td>Sites under contract</td><td class="cv" id="sSites">0</td><td class="kv" id="kSites">0</td></tr>
+    <tr><td>Coordinators on payroll</td><td class="cv" id="sAdm">1</td><td class="kv">1</td></tr>
+    <tr><td>Spent on coordination</td><td class="cv" id="sAdmCost">€0</td><td class="kv">€0</td></tr>
+    <tr><td>Profit per site / day</td><td class="cv" id="sMargin">€0</td><td class="kv" id="kMargin">€0</td></tr>
+    <tr><td>Things you personally touched</td><td class="cv" id="sActs">0</td><td class="kv">0</td></tr>
+    <tr><td>Could you grow further?</td><td class="cv">not without hiring</td><td class="kv">yes</td></tr>
+  </table>
+  <div class="row">
+    <input id="nameIn" maxlength="14" placeholder="Your name, for the record" autocomplete="off">
+    <button class="bbtn mint" id="saveBtn">Save score</button>
+    <button class="bbtn ghost" id="againBtn">Start again</button>
+  </div>
+  <div id="lb"><h3>Best operators</h3><div id="lbRows"></div></div>
+  <div class="cta">
+    <p>Claaro routes the work without a person in the middle — so the margin on site number twelve looks like the margin on site number one.</p>
+    <!-- CTA deliberately unlinked: claaro.com connection pending sales signoff -->
+    <span class="bbtn mint" style="opacity:.55;cursor:default" title="Link disabled in test build">See Claaro properly →</span>
+  </div>
+</div></div>
+
+<div id="rotate">Rotate your phone.<br><small style="color:var(--faint)">The rota is landscape. It has always been landscape.</small></div>
+
+<script>
+'use strict';
+/* =====================================================================
+   SHIFT HAPPENS — visuals implement "Shift Happens · Entity Sheet"
+   (Claude Design handoff). One visual axis: ENTROPY.
+   Chaos = murky / wobbling / desaturated · Jakarta.
+   Order = Claaro mint, geometric, calm · Figtree — only ever earned.
+   Geometry, tokens and states below are taken from the sheet verbatim.
+   ===================================================================== */
+const NS='http://www.w3.org/2000/svg', svg=document.getElementById('game');
+const DEBUG=/[?&]debug/.test(location.search), $=id=>document.getElementById(id);
+
+const CFG={
+  DAY:10,
+  FOCUS:100, DRAIN:23, REGEN:16, DRY:.42,
+  CHAIN_WIN:1.7, CHAIN_MAX:8, CLUTCH_DIST:100, CLUTCH_FOCUS:20,
+  DESK:64, DRIFT:[30,52],
+  CASH0:600,
+  SITE_REV:120,
+  /* seniority: price buys cleaning speed AND reliability.
+     "keeps N spots" is not asserted — it falls out of speed vs dirt vs travel. */
+  TIERS:[
+    {key:'junior',  cap:1, rate:[60,78],   rel:.70, brk:[2.4,4.6]},
+    {key:'standard',cap:2, rate:[82,102],  rel:.88, brk:[1.4,2.8]},
+    {key:'senior',  cap:3, rate:[108,132], rel:.98, brk:[.7,1.5]}
+  ],
+  CAP_SPEED:[0,2.0,3.1,4.7],            /* × SPOT_DIRT, indexed by cap */
+  CLEANER_WAGE:88, CLEANER_FEE_X:1.9,
+  ADMIN_SPREAD:[215,315], ADMIN_FEE_X:1.55, ADMIN_SPEED:[.30,.60], ADMIN_REGEN_PEN:.10,
+  SEVERANCE:1,                          /* days of wage to let someone go */
+  SPOT_DIRT:.055, SPOT_ACT:.30, HOP:.38, REPORT_CD:9,
+  FILTHY:.9, SAT_DROP:.05, SAT_RECOVER:.012, SAT_REPORT:.05, SAT_MISS:.07,
+  CONTRACT_DAYS:[1,3,6,9,12,15,18], CONTRACT_SITES:[1,1,2,2,3,3,4],
+  ADMIN_OFFER_CASH:1000,
+  EPI_SEC:9.5
+};
+/* the job market: an invisible ellipse around the score at the top edge.
+   Candidates enter left (p=0), swing counter-clockwise under the score,
+   and leave right (p=1) — fading in and out at the ends. */
+const MARKET={cx:800,cy:82,rx:292,ry:158,dur:15,gap:3.6};
+/* client slots keep clear of the market band (y<300 between x 500-1100) and of You */
+const SLOTS=[{x:250,y:340},{x:1350,y:340},{x:250,y:770},{x:1350,y:770},{x:640,y:852},{x:960,y:852}];
+const CLIENTS=['Northgate Centre','Meridian Offices','Riverside Clinic','Alderman Retail','Portway Logistics','Kestrel Park'];
+const SITEN=['Main','Annexe','Atrium','West wing','Depot','Car park'];
+const NAMES=['Marek','Jana','Petr','Eva','Lucie','Tomáš','Ana','Dorin','Kasia','Ibrahim','Nadia','Sorin'];
+
+const SAY={
+  won:(c,n)=>`Signed ${c} — ${n} site${n>1?'s':''}, €${n*CFG.SITE_REV}/day. Congratulations. It is now your problem.`,
+  hired:(s,r,cap)=>`Cleaner → ${s}. €${r}/day, covers about ${cap} place${cap>1?'s':''}.`,
+  firedC:(s,sev)=>`Let a cleaner go at ${s}. Severance ${money(sev)}.`,
+  firedA:sev=>`Let an Admin go. Severance ${money(sev)}. The reports are yours again.`,
+  overloaded:(s,n,c)=>`${s} has ${n} places and ${c} of cover. They cannot keep up — nobody could.`,
+  noCash:'Not enough cash for that one. The work still needs covering.',
+  understaffed:s=>`${s} has nobody assigned. It gets dirty on its own.`,
+  filthy:s=>`${s} is filthy. The client walks through it every morning.`,
+  adminOffer:'You could afford another coordinator. That is not the same as needing one.',
+  adminHired:r=>`Admin starts Monday. €${r}/day. Watch your margin.`,
+  marginFlip:'Your cashflow just went negative. The help is the expense.',
+  died:{broke:{t:'Insolvent',p:'You ran out of money. Every single site was profitable and the company was not.'},
+        clients:{t:'No clients left',p:'The buildings were dirty because you were busy. One by one, they cancelled.'},
+        desk:{t:'Focus depleted',p:'You stopped being able to keep up with the company you built.'}},
+  hint:{first:'Hold the pointer on the card until the ring fills.\nThat is a contract — winning it gives you a building.',
+        job:'Cleaners work the dirt themselves. What comes at you is their Report.\nMiss one and the client never hears the work was done.',
+        report:'That report never reached the client.\nAs far as they know, nobody came.',
+        fire:'Hold on one of your own people to let them go.\nSeverance is a day of their wage.',
+        capacity:'Look at the number on the tile — cover over places.\nRed means they physically cannot keep up.',
+        market:'People drift past the top of the screen looking for work.\nEach one has their own daily rate. Hold on one to hire them.',
+        hire:'You have a building and nobody in it.\nHire someone off the market — you need roughly one per site.',
+        focus:'That ring is your focus. Holding burns it, letting go refills it.\nYou cannot hold everything.',
+        admin:'A coordinator is on the market — the amber one.\nThey work at 45% of your speed, and they are not cheap.',
+        margin:'Look at your balance. The help costs about what it saves.\nThat is not a bug in the game.'}
+};
+
+/* ---------- utils ---------- */
+function el(t,a,p){const n=document.createElementNS(NS,t);for(const k in a)if(a[k]!=null)n.setAttribute(k,a[k]);(p||svg).appendChild(n);return n}
+const gr=(a,p)=>el('g',a,p);
+function txt(x,y,s,a,p){const t=el('text',Object.assign({x,y,'font-family':"'Plus Jakarta Sans',sans-serif"},a),p);t.textContent=s;return t}
+let sd=23;function rnd(){sd|=0;sd=sd+0x6D2B79F5|0;let t=Math.imul(sd^sd>>>15,1|sd);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}
+const R=(a,b)=>a+rnd()*(b-a), pick=a=>a[(rnd()*a.length)|0];
+const money=v=>'€'+Math.round(v).toLocaleString('en-GB');
+/* SVG text cannot wrap or ellipsize itself — clip to what the card can hold */
+const fit=(t,n)=>{t=String(t||'');return t.length<=n?t:t.slice(0,n-1)+'…'};
+
+/* silhouette DNA — shared by You / Cleaner / Extra coordinator, per sheet A1/A4/A5 */
+function silhouette(g,r,tone){
+  const k=r/54; /* sheet defines You at r54: head cy-14 r16, shoulders A28 */
+  el('circle',{cy:-14*k,r:16*k,fill:tone},g);
+  el('path',{d:`M${-28*k} ${24*k} A${28*k} ${28*k} 0 0 1 ${28*k} ${24*k}`,fill:tone},g);
+}
+
+/* ---------- defs (sheet: vignette + grime blur + hub glow + dots) ---------- */
+const DEFS=el('defs',{});
+{ const v=el('radialGradient',{id:'vign',cx:'50%',cy:'46%',r:'62%'},DEFS);
+  el('stop',{offset:'55%','stop-color':'#07100c','stop-opacity':0},v);
+  el('stop',{offset:'100%','stop-color':'#000','stop-opacity':.55},v);
+  const f=el('filter',{id:'soft',x:'-60%',y:'-60%',width:'220%',height:'220%'},DEFS);
+  el('feGaussianBlur',{stdDeviation:26},f);
+  const hg=el('radialGradient',{id:'hubGlow',cx:'50%',cy:'50%',r:'50%'},DEFS);
+  el('stop',{offset:'0%','stop-color':'#32DC97','stop-opacity':.18},hg);
+  el('stop',{offset:'100%','stop-color':'#32DC97','stop-opacity':0},hg);
+  const pt=el('pattern',{id:'dots',width:14,height:14,patternUnits:'userSpaceOnUse'},DEFS);
+  el('circle',{cx:2,cy:2,r:1.5,fill:'rgba(14,20,19,.16)'},pt);
+}
+
+/* ---------- layers ---------- */
+el('rect',{x:0,y:0,width:1600,height:1000,fill:'#07100c'});
+const Lgrime=gr({filter:'url(#soft)',opacity:.05}),
+      Lworld=gr({}), Lbeam=gr({}), Litems=gr({}), Lfx=gr({}), Lfloat=gr({});
+/* grime ellipses — verbatim from the sheet */
+[[240,180,150,120,.8],[1360,860,180,130,.8],[1420,220,140,150,.7],[200,820,160,120,.75],
+ [800,60,200,90,.6],[560,900,150,100,.7],[1080,120,130,100,.6],[1520,560,120,180,.65]]
+ .forEach(([cx,cy,rx,ry,o])=>el('ellipse',{cx,cy,rx,ry,fill:'#000',opacity:o},Lgrime));
+const vign=el('rect',{x:0,y:0,width:1600,height:1000,fill:'url(#vign)','pointer-events':'none'});
+
+/* ---------- the score, centred on the top edge; the market orbits it ---------- */
+const scoreG=gr({},Lworld);
+txt(MARKET.cx,46,'DAY 1',{id:'svgDay',fill:'#5f6f68','font-size':11,'font-weight':700,
+  'letter-spacing':'.18em','text-anchor':'middle'},scoreG);
+const svgCash=txt(MARKET.cx,86,'€600',{fill:'#32DC97','font-size':32,'font-weight':800,
+  'letter-spacing':'-.02em','text-anchor':'middle'},scoreG);
+const svgRate=txt(MARKET.cx,106,'+€0/day',{fill:'#32DC97','font-size':12,'font-weight':700,'text-anchor':'middle'},scoreG);
+const svgDay=scoreG.querySelector('text');
+
+/* ---------- A1 · the coordinator ---------- */
+const YOU={x:800,y:520};
+const youG=gr({transform:`translate(${YOU.x} ${YOU.y})`},Lworld);
+el('circle',{r:64,fill:'none',stroke:'#3a4a43','stroke-width':1.4,'stroke-dasharray':'4 9'},youG);
+el('circle',{r:58,fill:'none',stroke:'#22322a','stroke-width':5},youG);
+const FC=2*Math.PI*58;
+const focusRing=el('circle',{r:58,fill:'none',stroke:'#f0e6c8','stroke-width':5,'stroke-linecap':'round',
+  'stroke-dasharray':FC.toFixed(1),'stroke-dashoffset':0,transform:'rotate(-90)'},youG);
+const youBody=el('circle',{r:45,fill:'#131c17',stroke:'rgba(232,238,235,.45)','stroke-width':1.5},youG);
+const youSil=gr({},youG); silhouette(youSil,45,'rgba(232,238,235,.55)');
+txt(0,88,'You',{fill:'#c3cec9','font-size':14,'font-weight':700,'text-anchor':'middle'},youG);
+const youCo=txt(0,106,'',{fill:'#5f6f68','font-size':11,'font-weight':600,'text-anchor':'middle'},youG);
+
+/* ---------- state ---------- */
+const S={run:false,over:false,t:0,day:1,
+  cash:CFG.CASH0,rate:0,clients:[],crew:[],extras:[],items:[],ghosts:[],market:[],
+  focus:CFG.FOCUS,dry:false,chain:0,chainT:0,
+  mx:800,my:520,down:false,shake:0,
+  company:'',contractIdx:0,marketT:1.5,adminOffered:false,marginWarned:false,
+  hints:{},hintT:0,entropy:.35,
+  stats:{acts:0,peakSites:0,peakCrew:0,admins:1,adminSpend:0,revTotal:0,wageTotal:0,fired:0}};
+
+/* ---------- ghost slots: "open contract slot" ---------- */
+SLOTS.forEach((s,i)=>{
+  const g=gr({transform:`translate(${s.x} ${s.y})`,opacity:.4},Lworld);
+  el('circle',{r:118,fill:'none',stroke:'#22322a','stroke-width':1.5,'stroke-dasharray':'3 12'},g);
+  txt(0,4,'open contract slot',{fill:'#5f6f68','font-size':13,'text-anchor':'middle'},g);
+  S.ghosts.push(g);
+});
+
+/* ---------- A2/A3/A4 · client, sites, cleaners ---------- */
+let clipSeq=0;
+function addClient(nSites){
+  if(S.clients.length>=SLOTS.length)return null;
+  const idx=S.clients.length, slot=SLOTS[idx], name=CLIENTS[idx];
+  S.ghosts[idx].style.transition='opacity .5s'; S.ghosts[idx].setAttribute('opacity',0);
+  /* outer g = position (attribute); inner g = wobble (CSS transform).
+     Never both on one node — a CSS transform overrides the transform attribute. */
+  const outer=gr({transform:`translate(${slot.x} ${slot.y})`,opacity:0},Lworld);
+  const g=gr({class:'wob'},outer);
+  el('circle',{r:118,fill:'rgba(12,20,16,.55)',stroke:'#3a4a43','stroke-width':1.5,'stroke-dasharray':'3 12'},g);
+  el('rect',{x:-36,y:-146,width:72,height:4,rx:2,fill:'#22322a'},g);
+  const satBar=el('rect',{x:-36,y:-146,width:72,height:4,rx:2,fill:'#32DC97'},g);
+  txt(0,-126,name,{fill:'#7f8f88','font-size':14,'font-weight':600,'text-anchor':'middle'},g);
+  const cl={name,x:slot.x,y:slot.y,g:outer,satBar,sat:1,sites:[]};
+  for(let i=0;i<nSites;i++){
+    const ang=(-90+i*(360/nSites))*Math.PI/180;
+    const px=nSites>1?Math.round(Math.cos(ang)*64):0, py=nSites>1?Math.round(Math.sin(ang)*64):0;
+    const sg=gr({transform:`translate(${px} ${py})`},g);
+    el('rect',{x:-38,y:-22,width:76,height:44,rx:7,fill:'#0f1713',stroke:'#2a3a32','stroke-width':1.3},sg);
+    txt(0,-8,SITEN[i%SITEN.length],{fill:'#8a9c94','font-size':9,'font-weight':600,'text-anchor':'middle'},sg);
+    const capT=txt(33,-11,'',{fill:'#5f6f68','font-size':7.5,'font-weight':700,'text-anchor':'end'},sg);
+    /* each site has 1–3 cleanable places; each carries its own dirt */
+    const nSpots=1+((rnd()*3)|0);
+    const site={client:cl,short:SITEN[i%SITEN.length],x:slot.x+px,y:slot.y+py,
+      g:sg,capT,spots:[],crew:[],warned:false,filthyWarned:false};
+    for(let k=0;k<nSpots;k++){
+      const sx=(k-(nSpots-1)/2)*23, sy=7;
+      el('rect',{x:sx-9.5,y:sy-5.5,width:19,height:11,rx:3.5,fill:'#0d1512',stroke:'#2a3a32','stroke-width':1},sg);
+      const cid='sc'+(clipSeq++);
+      const cp=el('clipPath',{id:cid},DEFS); el('rect',{x:sx-9.5,y:sy-5.5,width:19,height:11,rx:3.5},cp);
+      const fill=el('rect',{x:sx-9.5,y:sy-5.5,width:0,height:11,fill:'#e5a94f',opacity:.55,'clip-path':`url(#${cid})`},sg);
+      site.spots.push({dirt:0,fill,rx:sx,ry:sy,x:site.x+sx,y:site.y+sy,claim:null});
+    }
+    cl.sites.push(site);
+  }
+  S.clients.push(cl);
+  outer.style.transition='opacity .8s'; outer.setAttribute('opacity',1);
+  return cl}
+const allSites=()=>S.clients.flatMap(c=>c.sites);
+
+/* ---------- the jump: a person leaping from the market onto the board ---------- */
+function leap(x0,y0,x1,y1,r,tone,onLand){
+  const g=gr({},Lfx);
+  el('circle',{r,fill:'#131c17',stroke:tone,'stroke-width':1.6},g);
+  silhouette(g,r,'rgba(232,238,235,.55)');
+  const t0=performance.now(),dur=620,mx=(x0+x1)/2,my=Math.min(y0,y1)-110;
+  (function step(now){
+    const f=Math.min(1,(now-t0)/dur),e=f<.5?2*f*f:1-Math.pow(-2*f+2,2)/2,u=1-e;
+    g.setAttribute('transform',
+      `translate(${(u*u*x0+2*u*e*mx+e*e*x1).toFixed(1)} ${(u*u*y0+2*u*e*my+e*e*y1).toFixed(1)}) scale(${(1-e*.35).toFixed(3)})`);
+    if(f<1)requestAnimationFrame(step); else g.remove();
+  })(t0);
+  /* state lands on a timer, not on rAF — the animation is decoration only */
+  setTimeout(()=>{if(!S.over)onLand&&onLand()},dur);
+}
+
+/* A4 · cleaner — stands on the site edge, hops onto dirty spots, files reports */
+function hireCleaner(spec,fx,fy){
+  const sites=allSites(); if(!sites.length)return null;
+  const fee=Math.round(spec.rate*CFG.CLEANER_FEE_X/10)*10;
+  if(S.cash<fee){toast(SAY.noCash,'bad');return null}
+  S.cash-=fee;
+  /* goes where the shortfall is worst: spots not covered by current capacity */
+  const site=sites.slice().sort((a,b)=>shortfall(b)-shortfall(a))[0];
+  const n=site.crew.length;
+  const hx=(n-1)*25, hy=35;                       /* home = bottom edge of the tile */
+  const g=gr({transform:`translate(${hx} ${hy})`,opacity:0},site.g);
+  const ring=el('circle',{r:20,fill:'none',stroke:'#e5735a','stroke-width':2.6,'stroke-linecap':'round',
+    'stroke-dasharray':(2*Math.PI*20).toFixed(1),'stroke-dashoffset':(2*Math.PI*20).toFixed(1),
+    transform:'rotate(-90)',opacity:0},g);
+  el('circle',{r:11,fill:'#131c17',stroke:'rgba(232,238,235,.28)','stroke-width':1},g);
+  el('circle',{cy:-2.5,r:3.4,fill:'rgba(232,238,235,.5)'},g);
+  el('path',{d:'M-6 6.8 A6 6 0 0 1 6 6.8',fill:'rgba(232,238,235,.5)'},g);
+  const pip=el('circle',{cx:8.5,cy:-7.5,r:2.6,fill:'#5f6f68'},g);
+  txt(0,22,money(spec.rate),{fill:'#5f6f68','font-size':7.5,'font-weight':600,'text-anchor':'middle'},g);
+  const c={kind:'cleaner',site,g,ring,pip,rate:spec.rate,cap:spec.cap,rel:spec.rel,brk:spec.brk,
+    speed:CFG.CAP_SPEED[spec.cap]*CFG.SPOT_DIRT,
+    hx,hy,rx:hx,ry:hy,x:site.x+hx,y:site.y+hy,
+    state:'idle',spot:null,t:0,reportT:0,prog:0,hold:.9,fireable:true};
+  site.crew.push(c); S.crew.push(c);
+  S.stats.peakCrew=Math.max(S.stats.peakCrew,S.crew.length);
+  leap(fx,fy,c.x,c.y,18,'rgba(232,238,235,.5)',()=>{
+    g.style.transition='opacity .25s'; g.setAttribute('opacity',1);
+    pulse(c.x,c.y,'#32DC97'); toast(SAY.hired(site.short,spec.rate,spec.cap),'money')});
+  return c}
+
+/* how many spots a site cannot keep on top of */
+const capacityOf=s=>s.crew.reduce((a,c)=>a+c.cap,0);
+const shortfall=s=>s.spots.length-capacityOf(s);
+
+function fire(p){
+  const sev=Math.round(p.rate*CFG.SEVERANCE);
+  S.cash-=sev; S.stats.fired++;
+  if(p.kind==='cleaner'){
+    p.site.crew=p.site.crew.filter(x=>x!==p); S.crew=S.crew.filter(x=>x!==p);
+    if(p.spot&&p.spot.claim===p)p.spot.claim=null;
+    /* reflow the remaining crew along the edge */
+    p.site.crew.forEach((c,i)=>{c.hx=(i-1)*25;c.x=c.site.x+c.hx;
+      if(c.state==='idle')c.g.setAttribute('transform',`translate(${c.hx} ${c.hy})`)});
+    toast(SAY.firedC(p.site.short,sev),'warn');
+  }else{
+    S.extras=S.extras.filter(x=>x!==p); S.stats.admins=S.extras.length+1;
+    toast(SAY.firedA(sev),'warn');
+  }
+  p.g.remove(); pulse(p.x,p.y,'#e5735a'); S.shake+=3;
+}
+
+/* A5 · Admin — the trap. Processes reports so you don't have to. */
+function hireAdmin(spec,fx,fy){
+  const fee=Math.round(spec.rate*CFG.ADMIN_FEE_X/10)*10;
+  if(S.cash<fee){toast(SAY.noCash,'bad');return null}
+  S.cash-=fee;
+  const n=S.extras.length;
+  const pos=[{x:585,y:640},{x:1015,y:640},{x:800,y:700}][n%3];
+  const outer=gr({transform:`translate(${pos.x} ${pos.y})`,opacity:0},Lworld);
+  const g=gr({class:'wob'},outer);
+  const line=el('line',{x1:0,y1:0,x2:0,y2:0,stroke:'#8a9c94','stroke-width':2,opacity:0},outer);
+  const ring=el('circle',{r:35,fill:'none',stroke:'#e5735a','stroke-width':2.6,'stroke-linecap':'round',
+    'stroke-dasharray':(2*Math.PI*35).toFixed(1),'stroke-dashoffset':(2*Math.PI*35).toFixed(1),
+    transform:'rotate(-90)',opacity:0},g);
+  el('circle',{r:25,fill:'#131c17',stroke:'rgba(232,238,235,.35)','stroke-width':1.2},g);
+  el('circle',{cy:-5,r:7.5,fill:'rgba(232,238,235,.4)'},g);
+  el('path',{d:'M-12.5 13.5 A12.5 12.5 0 0 1 12.5 13.5',fill:'rgba(232,238,235,.4)'},g);
+  txt(0,44,'Admin',{fill:'#c3cec9','font-size':12,'font-weight':700,'text-anchor':'middle'},g);
+  txt(0,58,money(spec.rate)+'/day',{fill:'#e5a94f','font-size':10,'font-weight':700,'text-anchor':'middle'},g);
+  const a={kind:'admin',x:pos.x,y:pos.y,g:outer,ring,line,target:null,prog:0,
+    rate:spec.rate,speed:spec.speed,hold:.9,fireable:true};
+  S.extras.push(a); S.stats.admins=S.extras.length+1;
+  leap(fx,fy,pos.x,pos.y,26,'#e5a94f',()=>{
+    outer.style.transition='opacity .25s'; outer.setAttribute('opacity',1);
+    pulse(pos.x,pos.y,'#e5a94f'); toast(SAY.adminHired(spec.rate),'warn'); hint('margin')});
+  return true}
+
+/* ---------- cleaner AI: edge → hop onto the dirtiest spot → clean → report ---------- */
+function setCleanerPos(c,rx,ry){c.rx=rx;c.ry=ry;c.x=c.site.x+rx;c.y=c.site.y+ry;
+  c.g.setAttribute('transform',`translate(${rx.toFixed(1)} ${ry.toFixed(1)})`)}
+function tickCleaner(c,s,dt){
+  if(c.reportT>0)c.reportT-=dt;
+  switch(c.state){
+    case 'idle':{
+      /* always take the worst one you can reach — with too few hands you thrash */
+      let best=null;
+      s.spots.forEach(sp=>{if(sp.dirt>=CFG.SPOT_ACT&&(!sp.claim||sp.claim===c)&&(!best||sp.dirt>best.dirt))best=sp});
+      if(best){best.claim=c;c.spot=best;c.state='hop';c.t=0;c.pip.setAttribute('fill','#f0e6c8')}
+      break}
+    case 'hop':{
+      c.t+=dt/CFG.HOP; const e=Math.min(1,c.t);
+      const u=1-e, mx=(c.hx+c.spot.rx)/2, my=Math.min(c.hy,c.spot.ry)-22;
+      setCleanerPos(c,u*u*c.hx+2*u*e*mx+e*e*c.spot.rx, u*u*c.hy+2*u*e*my+e*e*c.spot.ry);
+      if(c.t>=1)c.state='clean';
+      break}
+    case 'clean':{
+      c.spot.dirt=Math.max(0,c.spot.dirt-c.speed*dt);
+      if(c.spot.dirt<=.04){c.state='back';c.t=0}
+      break}
+    case 'back':{
+      c.t+=dt/CFG.HOP; const e=Math.min(1,c.t);
+      const u=1-e, mx=(c.spot.rx+c.hx)/2, my=Math.min(c.hy,c.spot.ry)-22;
+      setCleanerPos(c,u*u*c.spot.rx+2*u*e*mx+e*e*c.hx, u*u*c.spot.ry+2*u*e*my+e*e*c.hy);
+      if(c.t>=1){
+        c.spot.claim=null; c.spot=null; c.pip.setAttribute('fill','#5f6f68');
+        /* the work is done — now it has to be told to somebody */
+        if(c.reportT<=0){c.reportT=CFG.REPORT_CD;
+          spawnItem('report',{site:s,sub:s.client.name.split(' ')[0]+' · '+s.short,from:{x:c.x,y:c.y}})}
+        /* cheap hands take breaks; that is what cheap buys you */
+        if(rnd()>c.rel){c.state='break';c.t=R(c.brk[0],c.brk[1]);c.pip.setAttribute('fill','#e5735a')}
+        else c.state='idle';
+      }
+      break}
+    case 'break':{
+      c.t-=dt;
+      if(c.t<=0){c.state='idle';c.pip.setAttribute('fill','#5f6f68')}
+      break}
+  }
+}
+
+/* ---------- the job market ---------- */
+function marketPos(p){const th=Math.PI*(1-p);
+  return{x:MARKET.cx+Math.cos(th)*MARKET.rx, y:MARKET.cy+Math.sin(th)*MARKET.ry}}
+function marketFade(p){return p<.14?p/.14 : p>.86?(1-p)/.14 : 1}
+function spawnCandidate(kind){
+  const isA=kind==='admin';
+  let spec;
+  if(isA){const rate=Math.round(R(CFG.ADMIN_SPREAD[0],CFG.ADMIN_SPREAD[1])/5)*5;
+    const t=(rate-CFG.ADMIN_SPREAD[0])/(CFG.ADMIN_SPREAD[1]-CFG.ADMIN_SPREAD[0]);
+    spec={rate,speed:CFG.ADMIN_SPEED[0]+t*(CFG.ADMIN_SPEED[1]-CFG.ADMIN_SPEED[0])};}
+  else{const T=CFG.TIERS[(rnd()*CFG.TIERS.length)|0];
+    spec={rate:Math.round(R(T.rate[0],T.rate[1])/2)*2,cap:T.cap,rel:T.rel,brk:T.brk,tier:T.key};}
+  const fee=Math.round(spec.rate*(isA?CFG.ADMIN_FEE_X:CFG.CLEANER_FEE_X)/10)*10;
+  const r=isA?22:18;
+  const g=gr({opacity:0},Litems);
+  el('circle',{r,fill:'#131c17',stroke:isA?'#e5a94f':'rgba(232,238,235,.4)','stroke-width':1.5},g);
+  silhouette(g,r,isA?'rgba(229,169,79,.6)':'rgba(232,238,235,.5)');
+  const RM=2*Math.PI*(r+9);
+  const ring=el('circle',{r:r+9,fill:'none',stroke:'#f0e6c8','stroke-width':3,'stroke-linecap':'round',
+    'stroke-dasharray':RM.toFixed(1),'stroke-dashoffset':RM.toFixed(1),transform:'rotate(-90)'},g);
+  txt(0,r+14,isA?'ADMIN':'CLEANER',{fill:'#5f6f68','font-size':8.5,'font-weight':700,
+    'letter-spacing':'.15em','text-anchor':'middle'},g);
+  txt(0,r+29,money(spec.rate)+'/day',{fill:isA?'#e5a94f':'#c3cec9','font-size':12.5,'font-weight':800,'text-anchor':'middle'},g);
+  if(isA)txt(0,r+42,'works at '+Math.round(spec.speed*100)+'%',{fill:'#5f6f68','font-size':9,'font-weight':600,'text-anchor':'middle'},g);
+  else{ /* capacity pips: how many places they can keep on top of */
+    for(let k=0;k<3;k++)el('circle',{cx:(k-1)*9,cy:r+39,r:3,
+      fill:k<spec.cap?'#c9d6d0':'none',stroke:'#3a4a43','stroke-width':1},g);
+    txt(0,r+53,spec.rel<.8?'unreliable':spec.rel<.95?'steady':'senior',
+      {fill:spec.rel<.8?'#e5735a':'#5f6f68','font-size':8.5,'font-weight':600,'text-anchor':'middle'},g);}
+  txt(0,r+(isA?55:66),money(fee)+' to hire',{fill:'#5f6f68','font-size':8.5,'font-weight':600,'text-anchor':'middle'},g);
+  const c={market:true,kind,spec,rate:spec.rate,fee,r,g,ring,RM,p:0,prog:0,hold:isA?.9:.6,dead:false,x:0,y:0};
+  S.market.push(c); return c}
+function killCandidate(c){c.dead=true;c.g.remove();S.market=S.market.filter(x=>x!==c)}
+
+/* ---------- B · drifting items ---------- */
+/* what drifts at you is paperwork, not work: cleaners handle dirt themselves
+   and send you a Report for every round. More crew = more paperwork. */
+const KIND={
+  contract:{c:'#32DC97',glyph:'C',hold:1.0,title:'Contract'},
+  report  :{c:'#c9d6d0',glyph:'R',hold:.5, title:'Report'}
+};
+const RC=2*Math.PI*22;
+function spawnItem(kind,meta){
+  const K=KIND[kind]; meta=meta||{};
+  let sx,sy;
+  if(meta.from){sx=meta.from.x;sy=meta.from.y}
+  else{const a=R(0,Math.PI*2);sx=YOU.x+Math.cos(a)*R(420,540);sy=YOU.y+Math.sin(a)*R(300,400)}
+  /* keep the top band clear — that lane belongs to the job market */
+  sx=Math.max(80,Math.min(1520,sx)); sy=Math.max(300,Math.min(946,sy));
+  const g=gr({},Litems);
+  const tele=el('circle',{r:32,fill:'none',stroke:K.c,'stroke-width':1,'stroke-dasharray':'3 5',opacity:.9},g);
+  /* 120 wide: label + subtitle must never run past the border */
+  const body=el('rect',{x:-60,y:-20,width:120,height:40,rx:8,fill:'#101a15',stroke:K.c,'stroke-width':1.6},g);
+  el('circle',{cx:-42,r:11,fill:K.c,opacity:.18},g);
+  el('circle',{cx:-42,r:11,fill:'none',stroke:K.c,'stroke-width':1.3},g);
+  txt(-42,4.5,K.glyph,{fill:K.c,'font-size':13,'font-weight':800,'text-anchor':'middle'},g);
+  txt(-24,-2,fit(meta.title||K.title,15),{fill:'#c3cec9','font-size':11.5,'font-weight':700},g);
+  txt(-24,10,fit(meta.sub||'',18),{fill:'#5f6f68','font-size':8.5},g);
+  const ring=el('circle',{r:22,fill:'none',stroke:'#f0e6c8','stroke-width':3,'stroke-linecap':'round',
+    'stroke-dasharray':RC.toFixed(1),'stroke-dashoffset':RC.toFixed(1),transform:'rotate(-90)'},g);
+  const it={kind,K,g,ring,tele,body,x:sx,y:sy,prog:0,hold:K.hold,meta,born:0,
+    speed:R(CFG.DRIFT[0],CFG.DRIFT[1]),dead:false,warn:false};
+  S.items.push(it); place(it); return it}
+const place=it=>it.g.setAttribute('transform',`translate(${it.x.toFixed(1)} ${it.y.toFixed(1)})`);
+function killItem(it){it.dead=true;it.g.remove();S.items=S.items.filter(x=>x!==it);
+}
+
+/* ---------- D · vfx ---------- */
+function floater(x,y,s,col){const t=txt(x,y,s,{fill:col||'#f0e6c8','font-size':18,'font-weight':800,'text-anchor':'middle'},Lfloat);
+  let k=0;const iv=setInterval(()=>{k+=.05;t.setAttribute('y',y-k*46);t.setAttribute('opacity',Math.max(0,1-k*1.5));
+    if(k>=.7){clearInterval(iv);t.remove()}},16)}
+function pulse(x,y,col){const c=el('circle',{cx:x,cy:y,r:8,fill:'none',stroke:col||'#32DC97','stroke-width':3,opacity:.75},Lfx);
+  let k=0;const iv=setInterval(()=>{k+=.055;c.setAttribute('r',8+k*92);c.setAttribute('opacity',Math.max(0,.75-k*1.7));
+    if(k>=.45){clearInterval(iv);c.remove()}},16)}
+function zip(x0,y0,x1,y1,col){const l=el('line',{x1:x0,y1:y0,x2:x0,y2:y0,stroke:col||'#60a5fa','stroke-width':3,'stroke-linecap':'round',opacity:.9},Lfx);
+  const t0=performance.now();
+  (function s(now){const f=Math.min(1,(now-t0)/280),e=1-Math.pow(1-f,3);
+    l.setAttribute('x2',x0+(x1-x0)*e);l.setAttribute('y2',y0+(y1-y0)*e);
+    l.setAttribute('x1',x0+(x1-x0)*Math.max(0,e-.35));l.setAttribute('y1',y0+(y1-y0)*Math.max(0,e-.35));
+    l.setAttribute('opacity',f>.85?(1-f)/.15:.9);
+    if(f<1)requestAnimationFrame(s);else l.remove()})(t0)}
+function toast(m,cls){const t=document.createElement('div');t.className='toast '+(cls||'');t.textContent=m;
+  const b=$('toasts');b.appendChild(t);requestAnimationFrame(()=>t.classList.add('show'));
+  while(b.children.length>4)b.firstChild.remove();
+  setTimeout(()=>{t.classList.remove('show');setTimeout(()=>t.remove(),300)},3900)}
+function hint(k){if(S.hints[k])return;S.hints[k]=1;
+  $('hint').innerHTML=SAY.hint[k].replace('\n','<br>');$('hint').style.display='block';S.hintT=5.5}
+
+/* ---------- resolve ---------- */
+function chainUp(n){S.chain=Math.min(CFG.CHAIN_MAX,S.chain+(n||1));S.chainT=CFG.CHAIN_WIN;
+  $('chainN').textContent='×'+S.chain;$('chainWrap').style.opacity=S.chain>1?1:0}
+function resolve(it){
+  /* letting someone go */
+  if(it.fireable){S.stats.acts++;fire(it);return}
+  /* market hires: no clutch (they are never near the desk), they leap to the board */
+  if(it.market){
+    S.stats.acts++; chainUp(1);
+    if(it.kind==='admin')hireAdmin(it.spec,it.x,it.y); else hireCleaner(it.spec,it.x,it.y);
+    killCandidate(it); return;
+  }
+  const clutch=Math.hypot(it.x-YOU.x,it.y-YOU.y)<CFG.CLUTCH_DIST;
+  S.stats.acts++; chainUp(clutch?2:1);
+  if(clutch){S.focus=Math.min(CFG.FOCUS,S.focus+CFG.CLUTCH_FOCUS);floater(it.x,it.y-30,'✓ CLUTCH','#32DC97')}
+  if(it.kind==='contract'){
+    const cl=addClient(it.meta.n);
+    if(cl){toast(SAY.won(cl.name,it.meta.n),'money');zip(it.x,it.y,cl.x,cl.y,'#32DC97');pulse(cl.x,cl.y,'#32DC97');
+      if(!S.crew.length)hint('hire')}
+  }else if(it.kind==='report'){
+    /* filed with the client — that is the only thing that proves the work happened */
+    const site=it.meta.site;
+    if(site&&site.client){site.client.sat=Math.min(1,site.client.sat+CFG.SAT_REPORT);
+      zip(it.x,it.y,site.client.x,site.client.y-146,'#c9d6d0')}
+  }
+  if(!clutch)pulse(it.x,it.y,it.K.c);
+  bumpE(-.05); killItem(it)}
+
+function hitDesk(it){
+  S.shake+=6; S.chain=0; $('chainWrap').style.opacity=0; bumpE(.1);
+  if(it.kind==='report'&&it.meta.site&&it.meta.site.client){
+    it.meta.site.client.sat=Math.max(0,it.meta.site.client.sat-CFG.SAT_MISS);
+    hint('report')}
+  if(it.kind==='contract')toast('The contract lapsed. Someone else signed it.','warn');
+  killItem(it)}
+function bumpE(d){S.entropy=Math.max(.35,Math.min(1,S.entropy+d))}
+
+/* ---------- C · beam ---------- */
+function toView(ev){const r=svg.getBoundingClientRect(),s=Math.min(r.width/1600,r.height/1000);
+  return{x:(ev.clientX-r.left-(r.width-1600*s)/2)/s,y:(ev.clientY-r.top-(r.height-1000*s)/2)/s}}
+function move(ev){const p=toView(ev);S.mx=p.x;S.my=p.y}
+svg.addEventListener('pointermove',move);
+svg.addEventListener('pointerdown',e=>{e.preventDefault();move(e);S.down=true});
+addEventListener('pointerup',()=>{S.down=false});
+addEventListener('pointercancel',()=>{S.down=false});
+addEventListener('blur',()=>{S.down=false});
+const beamG=gr({opacity:0},Lbeam);
+const beamLine=el('line',{stroke:'#f0e6c8','stroke-width':2.5,'stroke-linecap':'round',opacity:.75,
+  style:'animation:beamGlow 1.6s ease-in-out infinite'},beamG);
+const beamRing=el('circle',{r:13,fill:'none',stroke:'#f0e6c8','stroke-width':2},beamG);
+const beamDot=el('circle',{r:4,fill:'#f0e6c8'},beamG);
+
+/* ---------- day / spawn ---------- */
+function newDay(d){
+  svgDay.textContent='DAY '+d;
+  if(S.contractIdx<CFG.CONTRACT_DAYS.length&&d>=CFG.CONTRACT_DAYS[S.contractIdx]&&S.clients.length<SLOTS.length){
+    const n=CFG.CONTRACT_SITES[S.contractIdx];S.contractIdx++;
+    spawnItem('contract',{n,sub:n+' site'+(n>1?'s':'')+' · '+money(n*CFG.SITE_REV)+'/day'});
+    if(d===1)hint('first');
+  }}
+function spawnTick(dt){
+  /* the market keeps turning whether or not you are ready to hire */
+  S.marketT-=dt;
+  if(S.marketT<=0&&allSites().length){
+    /* market thickens when you are under-covered across the whole estate */
+    const gap=allSites().reduce((a,s)=>a+Math.max(0,shortfall(s)),0);
+    S.marketT=MARKET.gap*(gap>0?.7:1.5)*R(.8,1.25);
+    const wantAdmin=S.cash>=CFG.ADMIN_OFFER_CASH&&allSites().length>=4&&rnd()<.22;
+    spawnCandidate(wantAdmin?'admin':'cleaner');
+    if(!S.hints.market)hint('market');
+    if(wantAdmin&&!S.adminOffered){S.adminOffered=true;toast(SAY.adminOffer,'warn');hint('admin')}
+  }
+}
+
+/* ---------- loop ---------- */
+let last=0;
+function loop(ts){
+  requestAnimationFrame(loop);
+  if(!last)last=ts; let dt=Math.min(.05,(ts-last)/1000); last=ts;
+  if(DEBUG&&window.FAST)dt*=3;
+  if(!S.run||S.over)return;
+  S.t+=dt;
+  const d=Math.floor(S.t/CFG.DAY)+1; if(d!==S.day){S.day=d;newDay(d)}
+  spawnTick(dt);
+
+  /* money */
+  const sites=allSites();
+  const rev=sites.length*CFG.SITE_REV;
+  /* wages are the sum of individual rates — who you hired actually matters */
+  const wag=S.crew.reduce((a,c)=>a+c.rate,0)+S.extras.reduce((a,c)=>a+c.rate,0);
+  S.rate=rev-wag;
+  const perSec=dt/CFG.DAY;
+  S.cash+=S.rate*perSec;
+  S.stats.revTotal+=rev*perSec; S.stats.wageTotal+=wag*perSec;
+  S.stats.adminSpend+=S.extras.length*CFG.ADMIN_WAGE*perSec;
+  S.stats.peakSites=Math.max(S.stats.peakSites,sites.length);
+  svgCash.textContent=money(S.cash);
+  svgCash.setAttribute('fill',S.rate>=0?'#32DC97':'#e5735a');
+  svgRate.textContent=(S.rate>=0?'+':'−')+money(Math.abs(S.rate))+'/day';
+  svgRate.setAttribute('fill',S.rate>=0?'#32DC97':'#e5735a');
+  $('counts').textContent=`${sites.length} site${sites.length!==1?'s':''} · ${S.crew.length} cleaner${S.crew.length!==1?'s':''} · ${S.extras.length+1} coordinator${S.extras.length?'s':''}`;
+  if(S.rate<0&&!S.marginWarned&&S.extras.length){S.marginWarned=true;toast(SAY.marginFlip,'bad')}
+  if(S.cash<0)return end('broke');
+
+  /* market orbit: enter left, swing counter-clockwise under the score, leave right */
+  S.market.slice().forEach(c=>{
+    c.p+=dt/MARKET.dur;
+    if(c.p>=1){killCandidate(c);return}
+    const pos=marketPos(c.p); c.x=pos.x; c.y=pos.y;
+    const fade=marketFade(c.p);
+    c.g.setAttribute('opacity',fade.toFixed(3));
+    c.g.setAttribute('transform',`translate(${c.x.toFixed(1)} ${c.y.toFixed(1)})`);
+    c.hireable=fade>.15;
+  });
+
+  /* beam targeting, in priority order so you never fire someone by accident:
+     paperwork first, then the market, and only then your own staff (tighter radius) */
+  let tgt=null;
+  if(S.down){
+    let bd=1e9;
+    S.items.forEach(it=>{const dd=Math.hypot(it.x-S.mx,it.y-S.my);if(dd<58&&dd<bd){bd=dd;tgt=it}});
+    if(!tgt){bd=1e9;
+      S.market.forEach(c=>{if(!c.hireable)return;
+        const dd=Math.hypot(c.x-S.mx,c.y-S.my);if(dd<58&&dd<bd){bd=dd;tgt=c}})}
+    if(!tgt){bd=1e9;
+      S.crew.concat(S.extras).forEach(p=>{const dd=Math.hypot(p.x-S.mx,p.y-S.my);
+        if(dd<36&&dd<bd){bd=dd;tgt=p}})}
+  }
+  /* show the red dismissal ring only on the person actually under the beam */
+  S.crew.concat(S.extras).forEach(p=>{if(p!==tgt&&+p.ring.getAttribute('opacity')>0){
+    p.ring.setAttribute('opacity',0);p.prog=0}});
+  if(tgt){
+    if(S.focus>0)S.focus=Math.max(0,S.focus-CFG.DRAIN*dt);
+    tgt.prog+=dt*(S.focus>0?(S.dry?CFG.DRY:1):CFG.DRY)*(1+S.chain*.05)/tgt.hold;
+    const C=tgt.market?tgt.RM:(tgt.fireable?2*Math.PI*(tgt.kind==='admin'?35:20):RC);
+    if(tgt.fireable)tgt.ring.setAttribute('opacity',1);
+    tgt.ring.setAttribute('stroke-dashoffset',(C*(1-Math.min(1,tgt.prog))).toFixed(1));
+    if(tgt.prog>=1)resolve(tgt);
+  }else{
+    S.focus=Math.min(CFG.FOCUS,S.focus+CFG.REGEN*Math.max(.5,1-S.extras.length*CFG.ADMIN_REGEN_PEN)*dt);
+  }
+  if(!S.dry&&S.focus<=0){S.dry=true;hint('focus')}
+  if(S.dry&&S.focus>28)S.dry=false;
+  focusRing.setAttribute('stroke-dashoffset',(FC*(1-S.focus/CFG.FOCUS)).toFixed(1));
+  focusRing.setAttribute('stroke',S.dry?'#e5735a':'#f0e6c8');
+  youBody.setAttribute('stroke',S.dry?'rgba(229,115,90,.5)':'rgba(232,238,235,.45)');
+  youSil.querySelectorAll('*').forEach(n=>n.setAttribute('fill',S.dry?'rgba(229,115,90,.55)':'rgba(232,238,235,.55)'));
+  S.items.forEach(it=>{if(it!==tgt&&it.prog>0){it.prog=Math.max(0,it.prog-dt*.85);
+    it.ring.setAttribute('stroke-dashoffset',(RC*(1-it.prog)).toFixed(1))}});
+  S.market.forEach(c=>{if(c!==tgt&&c.prog>0){c.prog=Math.max(0,c.prog-dt*.85);
+    c.ring.setAttribute('stroke-dashoffset',(c.RM*(1-c.prog)).toFixed(1))}});
+  beamG.setAttribute('opacity',S.down?1:0);
+  if(S.down){beamLine.setAttribute('x1',YOU.x);beamLine.setAttribute('y1',YOU.y);
+    beamLine.setAttribute('x2',S.mx);beamLine.setAttribute('y2',S.my);
+    beamRing.setAttribute('cx',S.mx);beamRing.setAttribute('cy',S.my);
+    beamDot.setAttribute('cx',S.mx);beamDot.setAttribute('cy',S.my)}
+
+  /* items drift — spawn telegraph r38→0 over 0.42s, border thickens near the desk */
+  S.items.slice().forEach(it=>{
+    it.born+=dt;
+    if(it.born<.42){const k=it.born/.42;it.tele.setAttribute('r',32*(1-k));it.tele.setAttribute('opacity',.9*(1-k));return}
+    else if(it.tele.parentNode)it.tele.remove();
+    const dx=YOU.x-it.x,dy=YOU.y-it.y,dd=Math.hypot(dx,dy)||1;
+    it.x+=dx/dd*it.speed*dt; it.y+=dy/dd*it.speed*dt; place(it);
+    if(dd<CFG.DESK+120&&!it.warn){it.warn=true;it.body.setAttribute('stroke-width',3)}
+    if(dd<CFG.DESK)hitDesk(it)});
+
+  /* extra coordinators */
+  S.extras.forEach(a=>{
+    if(!a.target||a.target.dead){
+      a.target=S.items.filter(i=>i.kind==='report').sort((p,q)=>
+        Math.hypot(p.x-a.x,p.y-a.y)-Math.hypot(q.x-a.x,q.y-a.y))[0]||null; a.prog=0}
+    if(a.target){a.line.setAttribute('opacity',.4);
+      a.line.setAttribute('x2',a.target.x-a.x);a.line.setAttribute('y2',a.target.y-a.y);
+      a.prog+=dt*CFG.ADMIN_SPEED/a.target.hold;
+      if(a.prog>=1){resolve(a.target);a.target=null;a.prog=0}}
+    else a.line.setAttribute('opacity',0)});
+
+  /* spots dirty up; cleaners work them autonomously; clients notice */
+  S.clients.slice().forEach(cl=>{
+    let worst=0;
+    cl.sites.forEach(s=>{
+      s.spots.forEach(sp=>{
+        sp.dirt=Math.min(1,sp.dirt+CFG.SPOT_DIRT*dt);
+        sp.fill.setAttribute('width',(19*sp.dirt).toFixed(1));
+        sp.fill.setAttribute('fill',sp.dirt>.75?'#e5735a':'#e5a94f');
+        worst=Math.max(worst,sp.dirt);
+      });
+      const short=shortfall(s);
+      s.capT.textContent=capacityOf(s)+'/'+s.spots.length;
+      s.capT.setAttribute('fill',short>0?'#e5735a':'#5f6f68');
+      s.crew.forEach(c=>tickCleaner(c,s,dt));
+      if(!s.crew.length&&!s.warned&&worst>.5){s.warned=true;toast(SAY.understaffed(s.short),'warn')}
+      if(worst>=CFG.FILTHY&&!s.filthyWarned){s.filthyWarned=true;
+        toast(short>0?SAY.overloaded(s.short,s.spots.length,capacityOf(s)):SAY.filthy(s.short),'bad');
+        setTimeout(()=>{s.filthyWarned=false},7000)}
+    });
+    cl.sat=Math.max(0,Math.min(1,cl.sat+(worst>=CFG.FILTHY?-CFG.SAT_DROP*dt:CFG.SAT_RECOVER*dt)));
+    cl.satBar.setAttribute('width',(72*cl.sat).toFixed(1));
+    cl.satBar.setAttribute('fill',cl.sat>=.7?'#32DC97':cl.sat>=.35?'#e5a94f':'#e5735a');
+    if(cl.sat<=0){
+      toast(`${cl.name} cancelled. ${cl.sites.length} site${cl.sites.length>1?'s':''} gone.`,'bad');
+      cl.sites.forEach(s=>s.crew.forEach(c=>{S.crew=S.crew.filter(x=>x!==c)}));
+      S.items.filter(i=>i.meta.site&&i.meta.site.client===cl).forEach(killItem);
+      const gi=S.clients.indexOf(cl);
+      cl.g.remove(); S.clients=S.clients.filter(x=>x!==cl); S.shake+=8;
+      if(S.ghosts[gi])S.ghosts[gi].setAttribute('opacity',.4);
+      if(!S.clients.length&&S.day>2)return end('clients');
+    }});
+
+  /* chain / shake / entropy — sheet: grime 0.05+g*0.8, saturate 1-g*0.5 */
+  if(S.chainT>0){S.chainT-=dt;if(S.chainT<=0){S.chain=0;$('chainWrap').style.opacity=0}}
+  S.shake=Math.max(0,S.shake-dt*20);
+  $('stage').style.transform=S.shake>.2?`translate(${(rnd()-.5)*S.shake}px,${(rnd()-.5)*S.shake}px)`:'';
+  S.entropy=Math.max(.35,S.entropy-dt*.012);
+  const ent=Math.max(S.entropy,.35+Math.min(.6,S.items.length*.05));
+  const g=Math.max(0,Math.min(1,(ent-.35)/.65));
+  document.documentElement.style.setProperty('--e',ent.toFixed(3));
+  Lgrime.setAttribute('opacity',(.05+g*.8).toFixed(3));
+  $('stage').style.filter=`saturate(${(1-g*.5).toFixed(2)})`;
+  $('entFill').style.width=Math.round(g*100)+'%';
+  $('entTxt').textContent=ent.toFixed(2)+' · '+(g>.72?'overwhelmed':g>.42?'stretched':'steady');
+  if(S.hintT>0){S.hintT-=dt;if(S.hintT<=0)$('hint').style.display='none'}
+}
+
+/* ---------- run control ---------- */
+function start(){
+  $('title').classList.remove('show');
+  youCo.textContent=S.company;                 /* the name on the van, under You */
+  S.run=true; newDay(1); if(DEBUG)dbg()}
+
+/* registration: name the company before the first contract lands */
+$('startBtn').addEventListener('click',e=>{
+  e.preventDefault();
+  $('intro').style.display='none';
+  $('reg').classList.add('show');
+  setTimeout(()=>$('coName').focus(),60);
+});
+document.querySelectorAll('.sugg button').forEach(b=>
+  b.addEventListener('click',()=>{$('coName').value=b.textContent.trim();$('coName').focus()}));
+$('reg').addEventListener('submit',e=>{
+  e.preventDefault();
+  const v=$('coName').value.trim();
+  S.company=(v||$('coName').placeholder).slice(0,24);
+  start();
+});
+function end(reason){
+  if(S.over)return; S.over=true; S.run=false; S.down=false;
+  const D=SAY.died[reason];
+  $('deathTitle').textContent=D.t; $('deathLine').textContent=D.p;
+  /* fail mark: the coordinator with a nearly-empty red ring (sheet END STATES) */
+  const m=$('deathMark'); m.innerHTML='';
+  const mk=(t,a)=>{const n=document.createElementNS(NS,t);for(const k in a)n.setAttribute(k,a[k]);m.appendChild(n)};
+  mk('circle',{r:69,fill:'none',stroke:'#22322a','stroke-width':6});
+  mk('circle',{r:69,fill:'none',stroke:'#e5735a','stroke-width':6,'stroke-linecap':'round','stroke-dasharray':'34 400',transform:'rotate(-90)'});
+  mk('circle',{r:54,fill:'#131c17',stroke:'rgba(229,115,90,.5)','stroke-width':1.5});
+  mk('circle',{cy:-14,r:16,fill:'rgba(229,115,90,.55)'});
+  mk('path',{d:'M-28 24 A28 28 0 0 1 28 24',fill:'rgba(229,115,90,.55)'});
+  $('death').classList.add('show');
+  setTimeout(()=>{$('death').classList.remove('show');epilogue()},2800)}
+$('againBtn').addEventListener('click',()=>location.reload());
+
+/* ---------- E · epilogue (order mode) ---------- */
+function epilogue(){
+  Litems.innerHTML='';S.items=[];S.market=[];beamG.setAttribute('opacity',0);
+  scoreG.style.transition='opacity .8s';scoreG.style.opacity=0;
+  $('hint').style.display='none';$('toasts').innerHTML='';$('tip').style.display='none';
+  $('chainWrap').style.opacity=0;$('stage').style.transform='';
+  document.querySelectorAll('.wob').forEach(n=>n.classList.remove('wob'));
+  [Lgrime,Lworld,Lfx,Lfloat].forEach(l=>{l.style.transition='opacity 1.3s';l.style.opacity=0});
+  vign.style.transition='opacity 1.3s'; vign.style.opacity=0;
+  $('stage').style.transition='background 1.6s, filter 1.2s';
+  $('stage').style.filter='saturate(1)';
+  $('stage').style.background='#0E1413';
+  $('hud').style.transition='opacity .7s';$('hud').style.opacity=0;
+  document.documentElement.style.setProperty('--e',0);
+  setTimeout(()=>{[Lgrime,Lworld,Lfx,Lfloat].forEach(l=>l.style.display='none');vign.style.display='none';claaro()},1350)}
+
+function claaro(){
+  const L=gr({opacity:0});
+  el('rect',{x:0,y:0,width:1600,height:1000,fill:'#0E1413'},L);
+  el('rect',{x:0,y:0,width:1600,height:1000,fill:'url(#dots)',opacity:.5},L);
+  const H={x:800,y:470};
+  const SP=['M800 470 C 560 470, 430 250, 250 250',
+            'M800 470 C 560 470, 430 690, 250 690',
+            'M800 470 C 1040 470, 1170 250, 1350 250',
+            'M800 470 C 1040 470, 1170 690, 1350 690'];
+  SP.forEach(d=>el('path',{d,fill:'none',stroke:'rgba(255,255,255,.2)','stroke-width':2},L));
+  const G=[{l:'Facility Manager',x:250,y:250},{l:'Cleaning Crew',x:250,y:690},
+           {l:'Clients',x:1350,y:250},{l:'Claaro.AI',x:1350,y:690,brand:true}];
+  G.forEach(o=>{
+    const g=gr({transform:`translate(${o.x} ${o.y})`},L);
+    if(o.brand){
+      el('circle',{r:52,fill:'#16211d',stroke:'rgba(50,220,151,.4)','stroke-width':1.5},g);
+      el('circle',{r:18,fill:'none',stroke:'#32DC97','stroke-width':3},g);
+      el('circle',{r:4,fill:'#32DC97'},g);
+      txt(0,82,o.l,{fill:'#32DC97','font-size':17,'font-weight':700,'text-anchor':'middle','font-family':"'Figtree',sans-serif"},g);
+    }else{
+      el('circle',{r:52,fill:'#16211d'},g);
+      el('circle',{cy:-9,r:10,fill:'rgba(232,238,235,.5)'},g);
+      el('path',{d:'M-17 15 A17 17 0 0 1 17 15',fill:'rgba(232,238,235,.5)'},g);
+      txt(0,82,o.l,{fill:'#7C8980','font-size':17,'font-weight':600,'text-anchor':'middle','font-family':"'Figtree',sans-serif"},g);
+    }});
+  /* flow dots — CSS offset-path, alternating: no player input, ever */
+  SP.forEach((d,i)=>el('circle',{r:7,fill:'#32DC97',
+    style:`offset-path:path('${d}');animation:flow ${[3.2,3.6,3.4,3.8][i]}s linear infinite ${[0,.8,.4,1.2][i]}s;animation-direction:alternate`},L));
+  /* hub */
+  el('circle',{cx:H.x,cy:H.y,r:148,fill:'url(#hubGlow)'},L);
+  el('circle',{cx:H.x,cy:H.y,r:94,fill:'#32DC97'},L);
+  el('circle',{cx:H.x,cy:H.y,r:72,fill:'url(#dots)',opacity:.9},L);
+  const mk=gr({transform:`translate(${H.x} ${H.y})`},L);
+  el('path',{d:'M 22 -30 A 38 38 0 1 0 22 30',fill:'none',stroke:'#0E1413','stroke-width':17,'stroke-linecap':'round'},mk);
+  el('rect',{x:14,y:-10,width:20,height:20,rx:6,fill:'#0E1413'},mk);
+  L.style.transition='opacity 1.1s'; L.setAttribute('opacity',1);
+  $('epiCap').style.display='block';
+  setTimeout(showScore,CFG.EPI_SEC*1000)}
+
+/* ---------- score ---------- */
+const LB={key:'shift-happens-lb',
+  all(){try{return JSON.parse(localStorage.getItem(this.key)||'[]')}catch(e){return[]}},
+  submit(n,e){const l=this.all();l.push({n,...e});l.sort((a,b)=>b.score-a.score);
+    localStorage.setItem(this.key,JSON.stringify(l.slice(0,50)));return l}};
+function showScore(){
+  const st=S.stats, sites=Math.max(1,st.peakSites);
+  const yourMargin=(st.revTotal-st.wageTotal)/Math.max(1,S.day-1)/sites;
+  $('scoreEyebrow').textContent='Closing accounts — '+(S.company||'your company');
+  $('scoreH').textContent=`You lasted ${S.day} days and reached ${st.peakSites} sites.`;
+  $('scoreLede').textContent=`The same ${st.peakSites} buildings, the same ${S.day} days, two ways of running them.`;
+  $('sSites').textContent=st.peakSites;$('kSites').textContent=st.peakSites;
+  $('sAdm').textContent=st.admins;$('sAdmCost').textContent=money(st.adminSpend);
+  $('sMargin').textContent=money(yourMargin);
+  /* Claaro side: same crew rates, but nobody is paid to coordinate */
+  const crewOnly=S.crew.reduce((a,c)=>a+c.rate,0)||CFG.CLEANER_WAGE*sites;
+  $('kMargin').textContent=money((sites*CFG.SITE_REV-crewOnly)/sites);
+  $('sActs').textContent=st.acts;
+  $('score').classList.add('show')}
+$('saveBtn').addEventListener('click',()=>{
+  const name=$('nameIn').value.trim()||'Anonymous operator';
+  const sc=S.stats.peakSites*100+(S.day-1)*10;
+  const list=LB.submit(name,{score:sc,days:S.day,sites:S.stats.peakSites});
+  const rows=$('lbRows');rows.innerHTML='';
+  const mine=list.findIndex(e=>e.n===name&&e.score===sc);
+  list.slice(0,8).forEach((e,i)=>{const dv=document.createElement('div');
+    dv.className='lbRow'+(i===mine?' me':'');
+    dv.innerHTML=`<span>#${i+1} <b>${e.n.replace(/[<>&]/g,'')}</b></span><span>${e.sites||0} sites · ${e.days} days</span>`;
+    rows.appendChild(dv)});
+  $('lb').style.display='block';$('saveBtn').disabled=true;$('saveBtn').style.opacity=.5});
+document.addEventListener('visibilitychange',()=>{last=0;S.down=false});
+function dbg(){window.FAST=false;
+  const b=document.createElement('button');b.textContent='×3';
+  b.style.cssText='position:fixed;right:12px;bottom:12px;z-index:99;background:#0a130f;color:#c9d6d0;border:1px solid #6b7d75;border-radius:999px;padding:6px 14px;cursor:pointer;font:600 12px sans-serif';
+  b.onclick=()=>{window.FAST=!window.FAST;b.textContent=window.FAST?'×3 ON':'×3'};
+  document.body.appendChild(b);
+  addEventListener('keydown',ev=>{
+    if(ev.key==='e')end('broke');
+    if(ev.key==='c')spawnItem('contract',{n:2,sub:'2 sites'});
+    if(ev.key==='a')spawnCandidate('cleaner');
+    if(ev.key==='d')spawnCandidate('admin');
+    if(ev.key==='m')S.cash+=2000})}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
