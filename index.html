@@ -72,9 +72,6 @@
   #left{display:flex;gap:26px;align-items:center}
   #rate{font:700 13px/1 var(--f-chaos);margin-top:7px}
   .up{color:var(--mint)}.down{color:var(--red)}
-  #chainWrap{text-align:center;opacity:0;transition:opacity .18s}
-  #chainN{font:800 44px/1 var(--f-chaos);color:var(--amber)}
-  #chainL{font:700 11px/1 var(--f-chaos);letter-spacing:.18em;text-transform:uppercase;color:var(--amber);opacity:.6;margin-top:4px}
   #right{text-align:right}
   #counts{font:600 12px/1 var(--f-chaos);color:var(--faint)}
   /* ── payroll: everyone you have taken on, oldest at the top ── */
@@ -212,6 +209,14 @@
     transition:.15s}
   #pauseBtn:hover{border-color:var(--sage2);color:var(--chalk)}
   #pauseBtn.on{display:block}
+  /* §7 · the voluntary way out — earned once the overload is real, framed as relief not victory */
+  #claaroBtn{position:fixed;left:50%;bottom:60px;transform:translateX(-50%);z-index:46;display:none;
+    flex-direction:column;align-items:center;gap:3px;cursor:pointer;
+    background:rgba(50,220,151,.1);color:var(--mint);border:1.5px solid var(--mint);border-radius:14px;
+    padding:10px 20px;font:800 13px/1 var(--f-chaos);letter-spacing:.01em;transition:.15s}
+  #claaroBtn small{font:600 10px/1 var(--f-chaos);color:var(--sage2);letter-spacing:.03em;text-transform:none}
+  #claaroBtn:hover{background:rgba(50,220,151,.18);transform:translateX(-50%) translateY(-1px)}
+  #claaroBtn.on{display:flex}
   #paused{position:fixed;inset:0;z-index:47;display:none;align-items:center;justify-content:center;
     background:rgba(5,9,7,.82);backdrop-filter:blur(2px)}
   #paused.on{display:flex}
@@ -231,9 +236,9 @@
 <div id="hud">
   <div id="top">
     <div id="banner"></div>
-  <div id="chainWrap"><div id="chainN">×1</div><div id="chainL">chain</div></div>
     <div id="right">
       <div id="counts">0 sites · 0 cleaners · 1 coordinator</div>
+      <div id="hudSub" style="font:600 11px/1.5 var(--f-chaos);color:var(--faint);margin-top:5px"></div>
     </div>
   </div>
   <div id="roster"></div>
@@ -253,7 +258,7 @@
       Everything goes through you, because there is nowhere else for it to go.</p>
     <div class="keys">
       <span><i style="background:#32DC97"></i>Contract — a client &amp; their sites</span>
-      <span><i style="background:#c084fc"></i>Reports pile up at the site</span>
+      <span><i style="background:#c084fc"></i>Dirty buildings get you fined</span>
       <span><i style="background:#60a5fa"></i>Miss an invoice and they walk out</span>
       <span><i style="background:#e5a94f"></i>Every hire has its own daily rate</span>
     </div>
@@ -277,7 +282,7 @@
 
 <div class="screen" id="death"><div class="panel">
   <svg id="deathMark" viewBox="-80 -80 160 160" width="150" height="150" style="margin-bottom:6px"></svg>
-  <div class="eyebrow">Shift over</div>
+  <div class="eyebrow" id="deathEyebrow">Shift over</div>
   <h2 id="deathTitle">Focus depleted</h2>
   <p id="deathLine"></p>
 </div></div>
@@ -285,6 +290,7 @@
 <div class="screen" id="score"><div class="card">
   <div class="eyebrow" id="scoreEyebrow">Closing accounts</div>
   <h2 id="scoreH">You lasted 14 days.</h2>
+  <div id="scorePct" style="margin-top:10px;font:800 15px/1 var(--f-brand);color:var(--mint-dk)"></div>
   <p class="lede" id="scoreLede">The same contracts, the same buildings, two ways of running them.</p>
   <table>
     <tr><th>&nbsp;</th><th>You, by hand</th><th>With Claaro</th></tr>
@@ -304,12 +310,13 @@
   <div id="lb"><h3>Best operators</h3><div id="lbRows"></div></div>
   <div class="cta">
     <p>Claaro routes the work without a person in the middle — so the margin on site number twelve looks like the margin on site number one.</p>
-    <!-- CTA deliberately unlinked: claaro.com connection pending sales signoff -->
-    <span class="bbtn mint" style="opacity:.55;cursor:default" title="Link disabled in test build">See Claaro properly →</span>
+    <!-- E4: live CTA — confirm the real destination URL below before shipping -->
+    <a class="bbtn mint" id="ctaLink" href="https://claaro.com" target="_blank" rel="noopener" style="text-decoration:none">See Claaro properly →</a>
   </div>
 </div></div>
 
 <button id="pauseBtn" title="Pause (P or Esc)">Pause</button>
+<button id="claaroBtn" title="Hand the routing to Claaro"><span>Route it through Claaro →</span><small>stop being the middle</small></button>
 <div id="paused"><div class="panel">
   <div class="eyebrow">Paused</div>
   <h2>Nothing is getting cleaner.</h2>
@@ -336,7 +343,6 @@ const CFG={
   /* the only resource that is actually yours. Holding costs it, letting go returns it,
      and at zero you keep working at a third of the speed — which is worse than stopping. */
   FOCUS:100, DRAIN:30, REGEN:12, DRY:.30,
-  CHAIN_WIN:1.7, CHAIN_MAX:8, CLUTCH_DIST:100, CLUTCH_FOCUS:20,
   DESK:64, DRIFT:[30,52],
   CASH0:3000,
   SITE_REV:120,
@@ -368,21 +374,28 @@ const CFG={
   SEVERANCE:1,                          /* days of wage to let someone go */
   /* a place goes from clean to filthy over exactly one day if nobody touches it */
   SPOT_ACT:.30, HOP:.45,        /* a hop reads as a hop — slow enough to follow */
-  /* reports are left AT the site and rot there until you go and file them */
-  PILE_HOLD:[.34,.15,2.2],      /* base hold, per report, cap */
-  /* invoices chase you instead */
-  MONTH:30, LATE_FEE:.4,          /* cleaners bill once a month, all at once */
-  Q_GAP:.85,                      /* question-mark spacing, ÷ pile size */
+  /* invoices chase you; a cleanliness fine is a breached contract */
+  MONTH:30,                       /* cleaners bill once a month, all at once */
   MAX_CLIENTS:6,                  /* six buildings' worth of paperwork, all of it yours */
   FINE_MIN:.04,                   /* below this the client lets it go */
   SKIP_FOR:[.5,.9],             /* a no-show, in days */
   ZOOM:1.3, ZOOM_LERP:7,        /* the site swells while it is being worked */
   /* per DAY, not per second: filthy for ~15 days loses the client, ~8 clean days undo it */
-  FILTHY:.9, SAT_DROP:1/15, SAT_RECOVER:1/8, SAT_REPORT:.05, SAT_MISS:.07,
+  FILTHY:.9, SAT_DROP:1/15, SAT_RECOVER:1/8,
   /* more chances than slots, so missing one card is a setback and not a hard cap */
   CONTRACT_DAYS:[1,4,9,15,22,30,38,47], CONTRACT_SITES:[1,4],  /* a client is worth 1–4 sites */
   ADMIN_OFFER_CASH:6000,
-  EPI_SEC:9.5
+  EPI_SEC:9.5,
+  /* ── the arc: the work never stops, and it escalates by KIND ──────────
+     After the scripted onboarding days above, contracts keep coming while a
+     slot is free — and the estate you rebuild is meaner than the one you lost. */
+  CONTRACT_EVERY:6,               /* days between standing offers once the ramp is done */
+  VIP_FROM_DAY:18, VIP_CHANCE:.5, /* prestige clients: pay well above, forgive nothing */
+  VIP_REV:1.7, VIP_DIRT:1.55, VIP_SAT_X:1.7, VIP_DIRT0:.55,
+  SPILL_FROM_DAY:12, SPILL_HIT:.7,/* an emergency dumps dirt on one site all at once */
+  SAT_WARN:.35,                   /* below this a client reads as "at risk" */
+  BURNOUT:6,                      /* seconds run dry before focus depletion ends you (S1) */
+  REFERRAL_EVERY:8                /* days a client must stay delighted before referring you onward (X2) */
 };
 /* the job market: an invisible ellipse around the score at the top edge.
    Candidates enter left (p=0), swing counter-clockwise under the score,
@@ -401,12 +414,14 @@ const NAMES=['Marek','Jana','Petr','Eva','Lucie','Tomáš','Ana','Dorin','Kasia'
 const SAY={
   /* one line, glanceable — the long version of the story is the board itself */
   won:(c,n)=>`Signed ${c} · ${n} site${n>1?'s':''} · €${n*CFG.SITE_REV}/day`,
+  wonVip:(c,n)=>`Signed ${c} ★ · ${n} site${n>1?'s':''} · pays big, forgives nothing`,
+  spill:(s,c)=>`Spill · ${s} · ${c} — needs attention now`,
   hired:(s,r,cap)=>`Cleaner → ${s} · €${r}/day`,
   firedC:(s,sev)=>`Cleaner let go · ${s} · −${money(sev)}`,
   firedA:sev=>`Admin let go · −${money(sev)}`,
   walkout:(s,a)=>`Unpaid ${money(a)} — they walked off ${s}`,
   monthSoon:'Month end tomorrow',
-  fine:(c,p,a)=>`${c} · ${p}% unreported · −${money(a)}`,
+  fine:(c,p,a)=>`${c} · ${p}% below clean · −${money(a)}`,
   monthEnd:(n,t)=>`Month end · ${n} invoices · ${money(t)}`,
   overloaded:(s,n,c)=>`${s} · ${n} places, ${c} cover`,
   noCash:'Not enough cash',
@@ -417,10 +432,10 @@ const SAY={
   marginFlip:'Cashflow just went negative',
   died:{broke:{t:'Insolvent',p:'You ran out of money. Every single site was profitable and the company was not.'},
         clients:{t:'No clients left',p:'The buildings were dirty because you were busy. One by one, they cancelled.'},
-        desk:{t:'Focus depleted',p:'You stopped being able to keep up with the company you built.'}},
+        desk:{t:'Focus depleted',p:'You stopped being able to keep up with the company you built.'},
+        claaro:{t:'You stepped out of the middle',p:'You handed the routing to Claaro. The work still happens — the shifts, the cleaning, the invoices — it just no longer runs through you.'}},
   hint:{first:'A contract is drifting past the top of the screen.\nHold the pointer on it until the ring fills — that wins you a building.',
-        job:'Cleaners work the dirt themselves. Every site writes up every day.\nThat paperwork is yours, and the client is waiting for it.',
-        pile:'Reports stack up where they were written, asking questions.\nHold on a pile to send them off — the purple bar is the client’s trust in you.',
+        job:'Cleaners work the dirt themselves.\nKeep the buildings clean and the bills paid, and the clients stay.',
         invoice:'Invoices chase you instead. Miss one and nobody gets paid —\nso they walk off the site, and you hire again.',
         fire:'Hold on one of your own people to let them go.\nSeverance is a day of their wage.',
         capacity:'Look at the number on the tile — cover over places.\nRed means they physically cannot keep up.',
@@ -429,7 +444,9 @@ const SAY={
         place:'They are on your beam, not in a building yet.\nHold on the site you want them in — the glowing ones are short of cover.',
         focus:'That ring is your willpower, and it is the only thing here that is yours.\nHolding burns it, letting go refills it. At zero you carry on, badly.',
         admin:'A coordinator is on the market — the amber one.\nThey work at 45% of your speed, and they are not cheap.',
-        margin:'Look at your balance. The help costs about what it saves.\nThat is not a bug in the game.'}
+        margin:'Look at your balance. The help costs about what it saves.\nThat is not a bug in the game.',
+        vip:'A VIP contract pays well above the rest — and turns filthy fast.\nZero tolerance: neglect it and its satisfaction craters.',
+        burnout:'You have run your willpower dry.\nEase off the beam and let it recover, or you will burn out.'}
 };
 
 let uidSeq=0;
@@ -442,6 +459,16 @@ const R=(a,b)=>a+rnd()*(b-a), pick=a=>a[(rnd()*a.length)|0];
 const money=v=>'€'+Math.round(v).toLocaleString('en-GB');
 /* SVG text cannot wrap or ellipsize itself — clip to what the card can hold */
 const fit=(t,n)=>{t=String(t||'');return t.length<=n?t:t.slice(0,n-1)+'…'};
+/* where a run sits against the field — a beatable number, not a bare score (E2).
+   A broad baseline curve, refined by your own local leaderboard if you have one. */
+const BENCH=[[0,1],[150,6],[350,16],[650,34],[1000,52],[1400,68],[1900,80],[2600,90],[3600,97],[5200,99]];
+function percentile(sc){
+  let p=1;
+  for(let i=0;i<BENCH.length-1;i++){const a=BENCH[i],b=BENCH[i+1];
+    if(sc>=a[0]&&sc<=b[0]){p=a[1]+(b[1]-a[1])*(sc-a[0])/(b[0]-a[0]);break} if(sc>b[0])p=b[1]}
+  const all=LB.all(); if(all.length){const below=all.filter(e=>e.score<sc).length;
+    p=(p+100*below/all.length)/2}
+  return Math.max(1,Math.min(99,Math.round(p)))}
 
 /* silhouette DNA — shared by You / Cleaner / Extra coordinator, per sheet A1/A4/A5 */
 function silhouette(g,r,tone){
@@ -503,11 +530,11 @@ const youCo=txt(0,106,'',{fill:'#5f6f68','font-size':11,'font-weight':600,'text-
 /* ---------- state ---------- */
 const S={run:false,over:false,t:0,day:1,
   cash:CFG.CASH0,rate:0,clients:[],crew:[],extras:[],items:[],ghosts:[],market:[],
-  focus:CFG.FOCUS,dry:false,chain:0,chainT:0,
+  focus:CFG.FOCUS,dry:false,everDry:false,integrated:false,burnoutT:0,
   mx:800,my:520,down:false,shake:0,
-  company:'',paused:false,motes:[],contractIdx:0,marketT:1.5,adminOffered:false,marginWarned:false,
+  company:'',paused:false,motes:[],contractIdx:0,nextContractDay:0,lastLost:null,marketT:1.5,adminOffered:false,marginWarned:false,
   hints:{},hintT:0,entropy:.35,carry:null,beamTgt:null,
-  stats:{acts:0,peakSites:0,peakCrew:0,admins:1,adminSpend:0,revTotal:0,wageTotal:0,fired:0,filed:0,invoicesPaid:0,walkouts:0,fines:0,focusSpent:0}};
+  stats:{acts:0,peakSites:0,peakCrew:0,admins:1,adminSpend:0,revTotal:0,wageTotal:0,fired:0,invoicesPaid:0,walkouts:0,fines:0,focusSpent:0}};
 
 /* ---------- ghost slots: "open contract slot" ---------- */
 SLOTS.forEach((s,i)=>{
@@ -519,7 +546,7 @@ SLOTS.forEach((s,i)=>{
 
 /* ---------- A2/A3/A4 · client, sites, cleaners ---------- */
 let clipSeq=0;
-function addClient(nSites){
+function addClient(nSites,vip,spotPlan){
   if(S.clients.length>=CFG.MAX_CLIENTS)return null;
   const idx=S.clients.length, slot=SLOTS[idx], name=CLIENTS[idx];
   S.ghosts[idx].style.transition='opacity .5s'; S.ghosts[idx].setAttribute('opacity',0);
@@ -534,21 +561,19 @@ function addClient(nSites){
      labels off the board and under the HUD */
   const lx=slot.x>800?-42:42, la=slot.x>800?'end':'start';
   const satPct=txt(lx,-148,'satisfied 100%',{fill:'#32DC97','font-size':9,'font-weight':800,'text-anchor':la},g);
-  /* purple = trust. Full while they know what is happening, bleeds while reports sit unfiled */
-  el('rect',{x:-36,y:-144,width:72,height:4,rx:2,fill:'#22322a'},g);
-  const trustBar=el('rect',{x:-36,y:-144,width:72,height:4,rx:2,fill:'#c084fc'},g);
-  const trustPct=txt(lx,-140,'trust 100%',{fill:'#c084fc','font-size':9,'font-weight':800,'text-anchor':la},g);
-  txt(0,-124,name,{fill:'#7f8f88','font-size':14,'font-weight':600,'text-anchor':'middle'},g);
-  const cl={name,x:slot.x,y:slot.y,g:outer,satBar,satPct,trustBar,trustPct,sat:1,trust:1,sites:[]};
+  txt(0,-124,name+(vip?' ★':''),{fill:vip?'#e5a94f':'#7f8f88','font-size':14,'font-weight':600,'text-anchor':'middle'},g);
+  const cl={name,x:slot.x,y:slot.y,g:outer,satBar,satPct,sat:1,sites:[],vip:!!vip,refT:CFG.REFERRAL_EVERY};
   /* four sites need more room on the ring than two do, or the tiles collide */
   const ringR=nSites>3?78:64;
   for(let i=0;i<nSites;i++){
     const ang=(-90+i*(360/nSites))*Math.PI/180;
     const px=nSites>1?Math.round(Math.cos(ang)*ringR):0, py=nSites>1?Math.round(Math.sin(ang)*ringR):0;
     const sg=gr({transform:`translate(${px} ${py})`},g);
-    el('rect',{x:-38,y:-22,width:76,height:44,rx:7,fill:'#0f1713',stroke:'#2a3a32','stroke-width':1.3},sg);
+    const tile=el('rect',{x:-38,y:-22,width:76,height:44,rx:7,fill:'#0f1713',stroke:'#2a3a32','stroke-width':1.3},sg);
     txt(0,-8,SITEN[i%SITEN.length],{fill:'#8a9c94','font-size':9,'font-weight':600,'text-anchor':'middle'},sg);
     const capT=txt(33,-11,'',{fill:'#5f6f68','font-size':7.5,'font-weight':700,'text-anchor':'end'},sg);
+    /* the honest per-site P&L: its revenue minus the wages standing on it (S2) */
+    const marginT=txt(-33,-11,'',{fill:'#5f6f68','font-size':7.5,'font-weight':800,'text-anchor':'start'},sg);
     /* where a cleaner you are carrying can be put down */
     const dglow=el('rect',{x:-42,y:-26,width:84,height:52,rx:9,fill:'none',stroke:'#32DC97',
       'stroke-width':1.6,'stroke-dasharray':'5 5',opacity:0},sg);
@@ -556,9 +581,10 @@ function addClient(nSites){
     const dring=el('circle',{r:44,fill:'none',stroke:'#32DC97','stroke-width':2.6,'stroke-linecap':'round',
       'stroke-dasharray':DR.toFixed(1),'stroke-dashoffset':DR.toFixed(1),transform:'rotate(-90)',opacity:0},sg);
     /* each site has 1–3 cleanable places; each carries its own dirt */
-    const nSpots=1+((rnd()*3)|0);
+    const nSpots=spotPlan?spotPlan[i]:1+((rnd()*3)|0);
     const site={client:cl,short:SITEN[i%SITEN.length],x:slot.x+px,y:slot.y+py,px,py,
-      g:sg,capT,dglow,spots:[],crew:[],warned:false,filthyWarned:false,scale:1,zoom:1};
+      g:sg,capT,marginT,tile,dglow,spots:[],crew:[],warned:false,filthyWarned:false,scale:1,zoom:1,
+      rev:CFG.SITE_REV*(vip?CFG.VIP_REV:1),dirtMul:vip?CFG.VIP_DIRT:1};
     site.drop={site,dropTarget:true,ring:dring,RM:DR,prog:0,hold:.5,x:site.x,y:site.y};
     for(let k=0;k<nSpots;k++){
       const sx=(k-(nSpots-1)/2)*23, sy=7;
@@ -566,20 +592,9 @@ function addClient(nSites){
       const cid='sc'+(clipSeq++);
       const cp=el('clipPath',{id:cid},DEFS); el('rect',{x:sx-9.5,y:sy-5.5,width:19,height:11,rx:3.5},cp);
       const fill=el('rect',{x:sx-9.5,y:sy-5.5,width:0,height:11,fill:'#e5a94f',opacity:.55,'clip-path':`url(#${cid})`},sg);
-      site.spots.push({dirt:0,fill,rx:sx,ry:sy,claim:null});
+      /* new sites arrive already carrying dirt, so the load you just took on is visible (X4) */
+      site.spots.push({dirt:vip?CFG.VIP_DIRT0:R(.25,.5),fill,rx:sx,ry:sy,claim:null});
     }
-    /* the paperwork pile sits on the outer side of the client ring, never over it,
-       so it is always reachable: right-hand sites file to the right, left to the left. */
-    const pdir=px>2?1:px<-2?-1:(slot.x<800?-1:1), pox=pdir*52;
-    site.pdir=pdir;
-    const pg=gr({transform:`translate(${pox} 0)`},sg);
-    const pring=el('circle',{r:19,fill:'none',stroke:'#f0e6c8','stroke-width':2.8,'stroke-linecap':'round',
-      'stroke-dasharray':(2*Math.PI*19).toFixed(1),'stroke-dashoffset':(2*Math.PI*19).toFixed(1),
-      transform:'rotate(-90)',opacity:0},pg);
-    const psheets=gr({},pg);
-    const pcount=txt(0,-4,'',{fill:'#e5a94f','font-size':9,'font-weight':800,'text-anchor':'middle'},pg);
-    site.pile={site,pile:true,n:0,g:pg,sheets:psheets,count:pcount,ring:pring,
-      RM:2*Math.PI*19,prog:0,hold:CFG.PILE_HOLD[0],x:site.x+pox,y:site.y};
     cl.sites.push(site);
   }
   S.clients.push(cl);
@@ -686,6 +701,20 @@ function fire(p){
   p.g.remove(); pulse(p.x,p.y,'#e5735a'); S.shake+=3;
 }
 
+/* losing a client is always LOCATED — remember who and why, so the game-over screen
+   can name them and the loss reads as your neglect, never as RNG (X3) */
+function loseClient(cl,reason){
+  if(!S.clients.includes(cl))return;
+  S.lastLost={name:cl.name,sites:cl.sites.length,reason};
+  toast(`${cl.name} cancelled · ${cl.sites.length} site${cl.sites.length>1?'s':''} gone`,'bad');
+  cl.sites.forEach(s=>s.crew.forEach(c=>{S.crew=S.crew.filter(x=>x!==c)}));
+  S.items.filter(i=>(i.meta.site&&i.meta.site.client===cl)||i.meta.client===cl).forEach(killItem);
+  const gi=S.clients.indexOf(cl);
+  cl.g.remove(); S.clients=S.clients.filter(x=>x!==cl); S.shake+=8;
+  if(S.ghosts[gi])S.ghosts[gi].setAttribute('opacity',.4);
+  if(!S.clients.length&&S.day>2)end('clients');
+}
+
 /* A5 · Admin — the trap. Processes reports so you don't have to. */
 function hireAdmin(spec,fx,fy){
   const fee=Math.round(spec.rate*CFG.ADMIN_FEE_X/10)*10;
@@ -711,93 +740,6 @@ function hireAdmin(spec,fx,fy){
     outer.style.transition='opacity .25s'; outer.setAttribute('opacity',1);
     pulse(pos.x,pos.y,'#e5a94f'); toast(SAY.adminHired(spec.rate),'warn'); hint('margin')});
   return true}
-
-/* ---------- trust ----------
-   A month owes the client one report per site per day. Trust is simply how much of
-   that month's paperwork is NOT sitting unsent — so it is whole until a day closes
-   unfiled, and whole again the moment you send. Nothing decays on a timer; the only
-   thing that moves it is the pile. The month-end audit wipes the slate either way,
-   which is why filing on the last day of a bad month still gets you out at 100%. */
-const owed=cl=>cl.sites.length*CFG.MONTH;
-const pendingOf=cl=>cl.sites.reduce((a,s)=>a+s.pile.n,0);
-function drawTrust(cl){
-  cl.trust=Math.max(0,1-pendingOf(cl)/owed(cl));
-  cl.trustBar.setAttribute('width',(72*cl.trust).toFixed(1));
-  cl.trustPct.textContent='trust '+Math.round(cl.trust*100)+'%';
-}
-
-/* ---------- the report pile ---------- */
-function addReport(site){
-  const p=site.pile; p.n++;
-  p.hold=Math.min(CFG.PILE_HOLD[2],CFG.PILE_HOLD[0]+CFG.PILE_HOLD[1]*p.n);
-  const k=p.sheets.childNodes.length;
-  if(k<6)el('rect',{x:-9+R(-2.5,2.5),y:-k*4,width:18,height:3.4,rx:1,fill:'#141e19',
-    stroke:'#8a9c94','stroke-width':.9,
-    transform:`rotate(${R(-6,6).toFixed(1)} 0 ${-k*4})`},p.sheets);
-  p.count.textContent=p.n>6?'+'+(p.n-6):'';
-  p.count.setAttribute('y',-Math.min(6,p.n)*4-6);
-}
-/* ---------- sending the reports ----------
-   The paperwork does not teleport. The loose sheets gather, fold down into an envelope,
-   and the envelope flies to the client — the one moment in the game where something
-   leaves your hands and actually arrives. */
-function mailReports(x0,y0,x1,y1,n){
-  const g=gr({},Lfx);
-  /* the sheets, about to become one thing */
-  const sheets=[];
-  for(let i=0;i<Math.min(4,Math.max(2,n));i++){
-    const a=R(-14,14), dx=R(-9,9), dy=-i*3.5;
-    sheets.push({n:el('rect',{x:-9,y:-6+dy,width:18,height:12,rx:1.5,fill:'#f4f2ec',
-      stroke:'#8a9c94','stroke-width':.9,opacity:.95,
-      transform:`translate(${dx.toFixed(1)} 0) rotate(${a.toFixed(1)})`},g),a,dx});
-  }
-  /* the envelope they fold into */
-  const env=gr({opacity:0},g);
-  el('rect',{x:-13,y:-9,width:26,height:18,rx:2,fill:'#f4f2ec',stroke:'#5f6f68','stroke-width':1.1},env);
-  const flap=el('path',{d:'M-13 -9 L0 1 L13 -9',fill:'none',stroke:'#5f6f68','stroke-width':1.1,
-    'stroke-linejoin':'round'},env);
-  el('circle',{cx:0,cy:1,r:2.6,fill:'#c084fc',opacity:0},env);
-  const seal=env.lastChild;
-  if(n>1)txt(0,-14,'×'+n,{fill:'#c084fc','font-size':9,'font-weight':800,'text-anchor':'middle'},env);
-
-  const FOLD=340, FLY=620, mx=(x0+x1)/2+R(-40,40), my=Math.min(y0,y1)-R(90,150);
-  const t0=performance.now();
-  (function step(now){
-    const el0=now-t0;
-    if(el0<FOLD){
-      /* gather and fold: sheets straighten, converge, and flatten into the envelope */
-      const f=el0/FOLD, e=f*f*(3-2*f);
-      sheets.forEach(sh=>sh.n.setAttribute('transform',
-        `translate(${(sh.dx*(1-e)).toFixed(1)} ${(-e*2).toFixed(1)}) rotate(${(sh.a*(1-e)).toFixed(1)}) scale(1 ${(1-e*.55).toFixed(3)})`));
-      if(f>.45){const k=(f-.45)/.55;
-        env.setAttribute('opacity',k.toFixed(2));
-        sheets.forEach(sh=>sh.n.setAttribute('opacity',(0.95*(1-k)).toFixed(2)));
-        /* the flap comes down and the seal lands */
-        flap.setAttribute('d',`M-13 -9 L0 ${(-9+10*k).toFixed(1)} L13 -9`);
-        seal.setAttribute('opacity',k>.8?((k-.8)/.2).toFixed(2):0);}
-      g.setAttribute('transform',`translate(${x0} ${y0}) scale(${(1+.12*Math.sin(f*Math.PI)).toFixed(3)})`);
-      requestAnimationFrame(step); return;
-    }
-    /* and away: an arc to the client, shrinking as it goes */
-    const f=Math.min(1,(el0-FOLD)/FLY), e=f<.5?2*f*f:1-Math.pow(-2*f+2,2)/2, u=1-e;
-    const x=u*u*x0+2*u*e*mx+e*e*x1, y=u*u*y0+2*u*e*my+e*e*y1;
-    g.setAttribute('transform',
-      `translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${(e*22).toFixed(1)}) scale(${(1-e*.45).toFixed(3)})`);
-    g.setAttribute('opacity',f>.88?((1-f)/.12).toFixed(2):1);
-    if(f<1&&!S.over)requestAnimationFrame(step);
-    else{g.remove(); if(!S.over){pulse(x1,y1,'#c084fc'); floater(x1,y1-14,'received','#c084fc')}}
-  })(t0);
-}
-
-function filePile(p){
-  const site=p.site, cl=site.client, n=p.n;
-  mailReports(p.x,p.y,cl.x,cl.y-144,n);
-  floater(p.x,p.y-16,n+' sent','#32DC97');
-  p.n=0; p.prog=0; p.hold=CFG.PILE_HOLD[0];
-  p.sheets.innerHTML=''; p.count.textContent=''; p.ring.setAttribute('opacity',0);
-  drawTrust(cl);
-  if(cl.trust>=1)floater(cl.x,cl.y-160,'trust 100%','#c084fc');
-}
 
 /* ---------- cleaner AI: edge → hop onto the dirtiest spot → clean → report ---------- */
 function setCleanerPos(c,rx,ry){c.rx=rx;c.ry=ry;
@@ -869,18 +811,21 @@ function marketPos(p){const th=Math.PI*(1-p);
 function marketFade(p){return p<.14?p/.14 : p>.86?(1-p)/.14 : 1}
 /* a contract on the market band: the same "hold it before it drifts away" deal as a
    hire, because taking work on is a decision of the same kind as taking a person on */
-function spawnContract(n){
+function spawnContract(n,vip){
+  const col=vip?'#e5a94f':'#32DC97', rev=Math.round(n*CFG.SITE_REV*(vip?CFG.VIP_REV:1));
+  /* roll the real workload NOW and show it, so signing is a decision not a dice roll (S4) */
+  const spotPlan=Array.from({length:n},()=>1+((rnd()*3)|0)), places=spotPlan.reduce((a,b)=>a+b,0);
   const g=gr({opacity:0},Litems), r=20;
-  el('circle',{r,fill:'#101a15',stroke:'#32DC97','stroke-width':1.6},g);
-  txt(0,5,'C',{fill:'#32DC97','font-size':17,'font-weight':800,'text-anchor':'middle'},g);
+  el('circle',{r,fill:'#101a15',stroke:col,'stroke-width':1.6},g);
+  txt(0,5,vip?'★':'C',{fill:col,'font-size':17,'font-weight':800,'text-anchor':'middle'},g);
   const RM=2*Math.PI*(r+9);
   const ring=el('circle',{r:r+9,fill:'none',stroke:'#f0e6c8','stroke-width':3,'stroke-linecap':'round',
     'stroke-dasharray':RM.toFixed(1),'stroke-dashoffset':RM.toFixed(1),transform:'rotate(-90)'},g);
-  txt(0,r+16,'CONTRACT',{fill:'#5f6f68','font-size':8.5,'font-weight':700,
+  txt(0,r+16,vip?'VIP CONTRACT':'CONTRACT',{fill:'#5f6f68','font-size':8.5,'font-weight':700,
     'letter-spacing':'.15em','text-anchor':'middle'},g);
-  txt(0,r+31,money(n*CFG.SITE_REV)+'/day',{fill:'#32DC97','font-size':12.5,'font-weight':800,'text-anchor':'middle'},g);
-  txt(0,r+45,n+' site'+(n>1?'s':''),{fill:'#5f6f68','font-size':9,'font-weight':600,'text-anchor':'middle'},g);
-  const c={market:true,kind:'contract',meta:{n},r,g,ring,RM,p:0,prog:0,hold:.8,dead:false,x:0,y:0};
+  txt(0,r+31,money(rev)+'/day',{fill:col,'font-size':12.5,'font-weight':800,'text-anchor':'middle'},g);
+  txt(0,r+45,n+' site'+(n>1?'s':'')+' · ≈'+places+' place'+(places>1?'s':''),{fill:'#5f6f68','font-size':9,'font-weight':600,'text-anchor':'middle'},g);
+  const c={market:true,kind:'contract',meta:{n,vip:!!vip,spotPlan},r,g,ring,RM,p:0,prog:0,hold:.8,dead:false,x:0,y:0};
   S.market.push(c); return c}
 
 function spawnCandidate(kind){
@@ -923,7 +868,7 @@ function killCandidate(c){c.dead=true;c.g.remove();S.market=S.market.filter(x=>x
 const KIND={
   contract:{c:'#32DC97',glyph:'C',hold:1.0,title:'Contract'},
   invoice :{c:'#60a5fa',glyph:'€',hold:.55,title:'Invoice'},
-  fine    :{c:'#c084fc',glyph:'?',hold:.8, title:'Reporting fine'}
+  fine    :{c:'#c084fc',glyph:'?',hold:.8, title:'Cleanliness fine'}
 };
 const RC=2*Math.PI*22;
 function spawnItem(kind,meta){
@@ -973,25 +918,6 @@ let bannerT=null;
 function banner(m,ms){const b=$('banner');b.textContent=m;b.style.display='block';
   clearTimeout(bannerT);bannerT=setTimeout(()=>{b.style.display='none'},ms||4000)}
 
-/* unanswered questions rising off an unfiled pile, like steam off a pot.
-   Driven from the main loop so they freeze correctly when paused. */
-function spawnQ(site){
-  if(S.motes.length>70)return;
-  const x=site.pile.x+R(-7,7), y=site.pile.y-10;
-  const g=txt(x,y,'?',{fill:'#c084fc','font-size':R(9,15).toFixed(1),
-    'font-weight':800,'text-anchor':'middle'},Lfx);
-  S.motes.push({g,x,y,t:0,dur:R(1.5,2.4),sway:R(6,16)*(rnd()<.5?-1:1),rise:R(46,72)});
-}
-function tickMotes(dt){
-  S.motes.slice().forEach(m=>{
-    m.t+=dt/m.dur;
-    if(m.t>=1){m.g.remove();S.motes=S.motes.filter(x=>x!==m);return}
-    const e=m.t;
-    m.g.setAttribute('y',(m.y-e*m.rise).toFixed(1));
-    m.g.setAttribute('x',(m.x+Math.sin(e*4.2)*m.sway*e).toFixed(1));
-    m.g.setAttribute('opacity',(1-e*e).toFixed(2));   /* thins out as it rises */
-  });
-}
 function hint(k){if(S.hints[k])return;S.hints[k]=1;
   $('hint').innerHTML=SAY.hint[k].replace('\n','<br>');$('hint').style.display='block';S.hintT=5.5}
 
@@ -1052,34 +978,28 @@ function tickRoster(dt){
 }
 
 /* ---------- resolve ---------- */
-function chainUp(n){S.chain=Math.min(CFG.CHAIN_MAX,S.chain+(n||1));S.chainT=CFG.CHAIN_WIN;
-  $('chainN').textContent='×'+S.chain;$('chainWrap').style.opacity=S.chain>1?1:0}
 function resolve(it){
   /* letting someone go */
   if(it.fireable){S.stats.acts++;fire(it);return}
-  /* filing a site's backlog of reports with the client */
-  if(it.pile){S.stats.acts++;S.stats.filed+=it.n;chainUp(1);filePile(it);bumpE(-.06);return}
-  /* market hires: no clutch (they are never near the desk), they leap to the board */
+  /* market hires: they leap to the board */
   if(it.market){
-    S.stats.acts++; chainUp(1);
+    S.stats.acts++;
     if(it.kind==='contract'){
-      const cl=addClient(it.meta.n);
-      if(cl){toast(SAY.won(cl.name,it.meta.n),'money');zip(it.x,it.y,cl.x,cl.y,'#32DC97');
-        pulse(cl.x,cl.y,'#32DC97'); if(!S.crew.length)hint('hire')}
+      const cl=addClient(it.meta.n,it.meta.vip,it.meta.spotPlan);
+      if(cl){toast(it.meta.vip?SAY.wonVip(cl.name,it.meta.n):SAY.won(cl.name,it.meta.n),'money');
+        zip(it.x,it.y,cl.x,cl.y,'#32DC97'); pulse(cl.x,cl.y,'#32DC97'); if(!S.crew.length)hint('hire')}
     }
     /* an Admin has no building to be put in — they go straight to a desk */
     else if(it.kind==='admin')hireAdmin(it.spec,it.x,it.y); else pickUp(it);
     killCandidate(it); return;
   }
   /* putting the carried hire down in a building */
-  if(it.dropTarget){S.stats.acts++;chainUp(1);putDown(it.site);return}
-  const clutch=Math.hypot(it.x-YOU.x,it.y-YOU.y)<CFG.CLUTCH_DIST;
-  S.stats.acts++; chainUp(clutch?2:1);
-  if(clutch){S.focus=Math.min(CFG.FOCUS,S.focus+CFG.CLUTCH_FOCUS);floater(it.x,it.y-30,'✓ CLUTCH','#32DC97')}
+  if(it.dropTarget){S.stats.acts++;putDown(it.site);return}
+  S.stats.acts++;
   if(it.kind==='contract'){
-    const cl=addClient(it.meta.n);
-    if(cl){toast(SAY.won(cl.name,it.meta.n),'money');zip(it.x,it.y,cl.x,cl.y,'#32DC97');pulse(cl.x,cl.y,'#32DC97');
-      if(!S.crew.length)hint('hire')}
+    const cl=addClient(it.meta.n,it.meta.vip,it.meta.spotPlan);
+    if(cl){toast(it.meta.vip?SAY.wonVip(cl.name,it.meta.n):SAY.won(cl.name,it.meta.n),'money');
+      zip(it.x,it.y,cl.x,cl.y,'#32DC97');pulse(cl.x,cl.y,'#32DC97'); if(!S.crew.length)hint('hire')}
   }else if(it.kind==='invoice'){
     /* paid on time — no penalty, just the time it cost you */
     S.cash-=it.meta.amount; S.stats.invoicesPaid++;
@@ -1088,11 +1008,11 @@ function resolve(it){
     S.cash-=it.meta.amount; S.stats.fines+=it.meta.amount;
     floater(it.x,it.y-18,'−'+money(it.meta.amount),'#c084fc');
   }
-  if(!clutch)pulse(it.x,it.y,it.K.c);
+  pulse(it.x,it.y,it.K.c);
   bumpE(-.05); killItem(it)}
 
 function hitDesk(it){
-  S.shake+=6; S.chain=0; $('chainWrap').style.opacity=0; bumpE(.1);
+  S.shake+=6; bumpE(.1);
   if(it.kind==='invoice'){
     /* an unpaid cleaner does not chase you — they simply stop turning up.
        Cheaper than the invoice, and far more expensive than it looks. */
@@ -1106,9 +1026,11 @@ function hitDesk(it){
     }else floater(it.x,it.y-18,'unpaid','#e5735a');
     hint('invoice')}
   if(it.kind==='fine'){
-    const late=Math.round(it.meta.amount*CFG.LATE_FEE);
-    S.cash-=it.meta.amount+late; S.stats.fines+=it.meta.amount+late;
-    floater(it.x,it.y-18,'−'+money(it.meta.amount+late)+' late','#c084fc')}
+    /* an unpaid cleanliness fine is a breached contract — the client walks */
+    const cl=it.meta.client;
+    if(cl&&S.clients.includes(cl))loseClient(cl,'fine');
+    else floater(it.x,it.y-18,'unpaid','#c084fc');
+  }
   if(it.kind==='contract')toast('The contract lapsed. Someone else signed it.','warn');
   killItem(it)}
 function bumpE(d){S.entropy=Math.max(.35,Math.min(1,S.entropy+d))}
@@ -1146,21 +1068,17 @@ function payrollBurst(){
 }
 /* month end, client side: they bill you for the share of the month
    they spent not knowing whether their buildings had been cleaned. */
+/* month-end audit: a cleaning contract is breached in proportion to how DIRTY the
+   building was, so the fine is (1 − satisfaction) × what the client paid this month. */
 function reportingFines(){
   S.clients.forEach(cl=>{
-    /* what they were never sent, as a share of what the month owed them */
-    const dark=Math.min(1,pendingOf(cl)/owed(cl));
-    const monthly=cl.sites.length*CFG.SITE_REV*CFG.MONTH;
-    /* the audit closes the books: unsent reports are written off and trust resets,
-       so a bad month cannot bleed into the next one — only into the fine */
-    cl.sites.forEach(s=>{const p=s.pile;p.n=0;p.prog=0;p.hold=CFG.PILE_HOLD[0];
-      p.sheets.innerHTML='';p.count.textContent='';p.ring.setAttribute('opacity',0)});
-    drawTrust(cl);
-    if(dark<CFG.FINE_MIN)return;                       /* filed in time — no fine */
+    const dark=1-cl.sat;
+    if(dark<CFG.FINE_MIN)return;                        /* clean enough — no breach, no fine */
+    const monthly=cl.sites.reduce((a,s)=>a+s.rev,0)*CFG.MONTH;
     const amt=Math.round(dark*monthly);
     setTimeout(()=>{if(S.over)return;
-      spawnItem('fine',{client:cl,amount:amt,pct:Math.round(dark*100),title:'Reporting fine',
-        sub:Math.round(dark*100)+'% unreported · '+money(amt),from:{x:cl.x,y:cl.y-144}});
+      spawnItem('fine',{client:cl,amount:amt,pct:Math.round(dark*100),title:'Cleanliness fine',
+        sub:Math.round(cl.sat*100)+'% satisfied · '+money(amt),from:{x:cl.x,y:cl.y-144}});
       toast(SAY.fine(cl.name,Math.round(dark*100),amt),'bad');
     },900);
   });
@@ -1169,16 +1087,25 @@ function newDay(d){
   svgDay.textContent='DAY '+d;
   /* the audit closes the old month first, then the new one starts writing itself up */
   if(d>1&&d%CFG.MONTH===1)reportingFines();
-  /* every site writes up its day, whatever kind of day it was. That is the paperwork:
-     one report per site per day, sitting where it was written until you send it. */
-  if(d>1)allSites().forEach(addReport);
   if(d>1&&d%CFG.MONTH===1)payrollBurst();
   else if(d>1&&d%CFG.MONTH===0)toast(SAY.monthSoon,'warn');
-  if(S.contractIdx<CFG.CONTRACT_DAYS.length&&d>=CFG.CONTRACT_DAYS[S.contractIdx]&&S.clients.length<CFG.MAX_CLIENTS){
+  /* the work never stops: the scripted ramp first, then a standing offer whenever a
+     slot is free — the estate refills, and past the ramp it can arrive VIP (E1/X1) */
+  const scheduled=S.contractIdx<CFG.CONTRACT_DAYS.length&&d>=CFG.CONTRACT_DAYS[S.contractIdx];
+  const recurring=S.contractIdx>=CFG.CONTRACT_DAYS.length&&d>=S.nextContractDay;
+  if((scheduled||recurring)&&S.clients.length<CFG.MAX_CLIENTS&&!S.market.some(m=>m.kind==='contract')){
     const n=CFG.CONTRACT_SITES[0]+((rnd()*(CFG.CONTRACT_SITES[1]-CFG.CONTRACT_SITES[0]+1))|0);
-    S.contractIdx++;
-    spawnContract(n);
+    const vip=d>=CFG.VIP_FROM_DAY&&rnd()<CFG.VIP_CHANCE;
+    spawnContract(n,vip);
+    if(vip&&!S.hints.vip)hint('vip');
+    if(scheduled)S.contractIdx++; else S.nextContractDay=d+CFG.CONTRACT_EVERY;
     if(d===1)hint('first');
+  }
+  /* emergencies: a spill dumps dirt on one site at once, more often as the estate grows */
+  if(d>=CFG.SPILL_FROM_DAY&&allSites().length&&rnd()<Math.min(.5,.05+S.stats.peakSites*.02)){
+    const s=pick(allSites());
+    s.spots.forEach(sp=>sp.dirt=Math.min(1,sp.dirt+CFG.SPILL_HIT)); s.filthyWarned=false;
+    toast(SAY.spill(s.short,s.client.name),'bad'); pulse(s.x,s.y,'#e5735a'); S.shake+=4;
   }}
 function spawnTick(dt){
   /* the market keeps turning whether or not you are ready to hire */
@@ -1208,7 +1135,7 @@ function loop(ts){
 
   /* money */
   const sites=allSites();
-  const rev=sites.length*CFG.SITE_REV;
+  const rev=sites.reduce((a,s)=>a+s.rev,0);   /* VIP sites are worth more per day */
   /* wages are the sum of individual rates — who you hired actually matters */
   const crewWage=S.crew.reduce((a,c)=>a+c.rate,0);
   const admWage=S.extras.reduce((a,c)=>a+c.rate,0);
@@ -1225,6 +1152,11 @@ function loop(ts){
   svgRate.textContent=(S.rate>=0?'+':'−')+money(Math.abs(S.rate))+'/day';
   svgRate.setAttribute('fill',S.rate>=0?'#32DC97':'#e5735a');
   $('counts').textContent=`${sites.length} site${sites.length!==1?'s':''} · ${S.crew.length} cleaner${S.crew.length!==1?'s':''} · ${S.extras.length+1} coordinator${S.extras.length?'s':''}`;
+  /* honest cashflow: the monthly payroll cliff, and what coordination overhead is costing (S3/X5) */
+  $('hudSub').innerHTML=(S.crew.length?`payroll in ${CFG.MONTH-((S.day-1)%CFG.MONTH)}d · ${money(crewWage*CFG.MONTH)} due`:'')
+    +(S.extras.length?`${S.crew.length?' · ':''}<span style="color:#e5a94f">coordination −${money(admWage)}/day</span>`:'');
+  /* §7 · offer the way out once the overload is real (≥3 sites and you've felt the wall) */
+  $('claaroBtn').classList.toggle('on',S.stats.peakSites>=3&&(S.everDry||S.day>=20));
   if(S.rate<0&&!S.marginWarned&&S.extras.length){S.marginWarned=true;toast(SAY.marginFlip,'bad')}
   if(S.cash<0)return end('broke');
 
@@ -1256,9 +1188,6 @@ function loop(ts){
         S.market.forEach(c=>{if(!c.hireable)return;
           const dd=Math.hypot(c.x-S.mx,c.y-S.my);if(dd<58&&dd<bd){bd=dd;tgt=c}})}
       if(!tgt){bd=1e9;
-        allSites().forEach(s=>{if(!s.pile.n)return;
-          const dd=Math.hypot(s.pile.x-S.mx,s.pile.y-S.my);if(dd<44&&dd<bd){bd=dd;tgt=s.pile}})}
-      if(!tgt){bd=1e9;
         S.crew.concat(S.extras).forEach(p=>{const dd=Math.hypot(p.x-S.mx,p.y-S.my);
           if(dd<40&&dd<bd){bd=dd;tgt=p}})}
     }
@@ -1279,16 +1208,12 @@ function loop(ts){
   /* show the red dismissal ring only on the person actually under the beam */
   S.crew.concat(S.extras).forEach(p=>{if(p!==tgt&&+p.ring.getAttribute('opacity')>0){
     p.ring.setAttribute('opacity',0);p.prog=0}});
-  allSites().forEach(s=>{if(s.pile!==tgt&&s.pile.prog>0){
-    s.pile.prog=Math.max(0,s.pile.prog-dt*.85);
-    s.pile.ring.setAttribute('stroke-dashoffset',(s.pile.RM*(1-s.pile.prog)).toFixed(1));
-    if(s.pile.prog<=0)s.pile.ring.setAttribute('opacity',0)}});
   if(tgt){
     if(S.focus>0){const burn=Math.min(S.focus,CFG.DRAIN*dt);
       S.focus-=burn; S.stats.focusSpent+=burn}
-    tgt.prog+=dt*(S.focus>0?(S.dry?CFG.DRY:1):CFG.DRY)*(1+S.chain*.05)/tgt.hold;
-    const C=(tgt.market||tgt.pile||tgt.dropTarget)?tgt.RM:(tgt.fireable?2*Math.PI*(tgt.kind==='admin'?35:20):RC);
-    if(tgt.fireable||tgt.pile||tgt.dropTarget)tgt.ring.setAttribute('opacity',1);
+    tgt.prog+=dt*(S.focus>0?(S.dry?CFG.DRY:1):CFG.DRY)/tgt.hold;
+    const C=(tgt.market||tgt.dropTarget)?tgt.RM:(tgt.fireable?2*Math.PI*(tgt.kind==='admin'?35:20):RC);
+    if(tgt.fireable||tgt.dropTarget)tgt.ring.setAttribute('opacity',1);
     tgt.ring.setAttribute('stroke-dashoffset',(C*(1-Math.min(1,tgt.prog))).toFixed(1));
     if(tgt.prog>=1)resolve(tgt);
   }else if(!rosterHold){
@@ -1297,12 +1222,15 @@ function loop(ts){
   }
   if(!S.dry&&S.focus<=0){S.dry=true;hint('focus')}
   if(S.dry&&S.focus>28)S.dry=false;
-  const wp=S.focus/CFG.FOCUS;
+  const wp=S.focus/CFG.FOCUS, red=wp<=.10;      /* the red band: willpower at or below 10% */
+  /* burnout counts down ONLY inside the red band — willpower, with teeth (S1) */
+  if(red){S.burnoutT+=dt;S.everDry=true; if(!S.hints.burnout)hint('burnout'); if(S.burnoutT>=CFG.BURNOUT)return end('desk')}
+  else S.burnoutT=Math.max(0,S.burnoutT-dt*2);
   focusRing.setAttribute('stroke-dashoffset',(FC*(1-wp)).toFixed(1));
-  focusRing.setAttribute('stroke',S.dry?'#e5735a':'#f0e6c8');
-  /* the only willpower readout left is the one on You, where the spending happens */
-  youWp.textContent=Math.round(wp*100)+'%';
-  youWp.setAttribute('fill',S.dry?'#e5735a':tgt?'#e5a94f':'#f0e6c8');
+  focusRing.setAttribute('stroke',red?'#e5735a':'#f0e6c8');
+  /* the willpower readout on You becomes a burnout countdown once you enter the red band */
+  youWp.textContent=red?('BURNOUT '+Math.max(0,Math.ceil(CFG.BURNOUT-S.burnoutT))):(Math.round(wp*100)+'%');
+  youWp.setAttribute('fill',red?'#e5735a':tgt?'#e5a94f':'#f0e6c8');
   youBody.setAttribute('stroke',S.dry?'rgba(229,115,90,.5)':'rgba(232,238,235,.45)');
   youSil.querySelectorAll('*').forEach(n=>n.setAttribute('fill',S.dry?'rgba(229,115,90,.55)':'rgba(232,238,235,.55)'));
   S.items.forEach(it=>{if(it!==tgt&&it.prog>0){it.prog=Math.max(0,it.prog-dt*.85);
@@ -1334,14 +1262,10 @@ function loop(ts){
 
   /* extra coordinators */
   S.extras.forEach(a=>{
-    /* an Admin clears invoices first, then goes and files the worst report pile */
-    /* drop the target if it is done, gone, or belongs to a client who has since left */
-    if(!a.target||a.target.dead
-       ||(a.target.pile&&(!a.target.n||!S.clients.includes(a.target.site.client)))){
+    /* an Admin clears the paperwork — invoices and fines — nearest first (its own channel) */
+    if(!a.target||a.target.dead){
       a.target=S.items.filter(i=>i.kind==='invoice'||i.kind==='fine').sort((p,q)=>
-        Math.hypot(p.x-a.x,p.y-a.y)-Math.hypot(q.x-a.x,q.y-a.y))[0]
-        || allSites().filter(s=>s.pile.n>0).sort((p,q)=>q.pile.n-p.pile.n).map(s=>s.pile)[0]
-        || null;
+        Math.hypot(p.x-a.x,p.y-a.y)-Math.hypot(q.x-a.x,q.y-a.y))[0] || null;
       a.prog=0}
     if(a.target){a.line.setAttribute('opacity',.4);
       a.line.setAttribute('x2',a.target.x-a.x);a.line.setAttribute('y2',a.target.y-a.y);
@@ -1353,15 +1277,23 @@ function loop(ts){
   S.clients.slice().forEach(cl=>{
     let worst=0;
     cl.sites.forEach(s=>{
+      let sworst=0;
       s.spots.forEach(sp=>{
-        sp.dirt=Math.min(1,sp.dirt+dt/CFG.DAY);        /* clean → filthy in exactly one day */
+        sp.dirt=Math.min(1,sp.dirt+dt/CFG.DAY*s.dirtMul);        /* clean → filthy in exactly one day */
         sp.fill.setAttribute('width',(19*sp.dirt).toFixed(1));
         sp.fill.setAttribute('fill',sp.dirt>.75?'#e5735a':'#e5a94f');
-        worst=Math.max(worst,sp.dirt);
+        sworst=Math.max(sworst,sp.dirt);
       });
+      worst=Math.max(worst,sworst);
       const short=shortfall(s);
       s.capT.textContent=capacityOf(s)+'/'+s.spots.length;
       s.capT.setAttribute('fill',short>0?'#e5735a':'#5f6f68');
+      /* the honest per-site P&L: revenue minus the wages standing on it (S2) */
+      const net=s.rev-s.crew.reduce((a,c)=>a+c.rate,0);
+      s.marginT.textContent=(net>=0?'+':'−')+'€'+Math.abs(Math.round(net));
+      s.marginT.setAttribute('fill',net>=0?'#32DC97':'#e5735a');
+      /* at-a-glance health on the tile outline: dim-green clean&covered, amber slipping, red filthy (X5) */
+      s.tile.setAttribute('stroke',sworst>=CFG.FILTHY?'#e5735a':(sworst>=.5||short>0)?'#e5a94f':'#2f4a3f');
       s.crew.forEach(c=>tickCleaner(c,s,dt));
       /* the site swells while it is actually being worked, so progress is readable */
       s.zoom=s.crew.some(c=>c.state==='clean'||c.state==='hop'||c.state==='back')?CFG.ZOOM:1;
@@ -1369,41 +1301,32 @@ function loop(ts){
         s.scale+=(s.zoom-s.scale)*Math.min(1,dt*CFG.ZOOM_LERP);
         s.g.setAttribute('transform',`translate(${s.px} ${s.py}) scale(${s.scale.toFixed(3)})`);
         s.crew.forEach(c=>{c.x=s.x+c.rx*s.scale;c.y=s.y+c.ry*s.scale});
-        s.pile.x=s.x+s.pdir*52*s.scale; s.pile.y=s.y;
-      }
-      /* unfiled paperwork asks questions nobody answers */
-      if(s.pile.n>0){
-        s.moteT=(s.moteT||0)-dt;
-        if(s.moteT<=0){s.moteT=CFG.Q_GAP/Math.min(6,s.pile.n);spawnQ(s)}
       }
       if(!s.crew.length&&!s.warned&&worst>.5){s.warned=true;toast(SAY.understaffed(s.short),'warn')}
       if(worst>=CFG.FILTHY&&!s.filthyWarned){s.filthyWarned=true;
         toast(short>0?SAY.overloaded(s.short,s.spots.length,capacityOf(s)):SAY.filthy(s.short),'bad');
         setTimeout(()=>{s.filthyWarned=false},7000)}
     });
-    /* reporting debt: what share of this month have they been left in the dark?
-       That share becomes the fine at month end. */
-    drawTrust(cl);
-
-    cl.sat=Math.max(0,Math.min(1,cl.sat+(worst>=CFG.FILTHY?-CFG.SAT_DROP:CFG.SAT_RECOVER)*dt/CFG.DAY));
+    /* VIP clients punish neglect far harder — prosperity you can't keep clean is a liability */
+    const satRate=worst>=CFG.FILTHY?-CFG.SAT_DROP*(cl.vip?CFG.VIP_SAT_X:1):CFG.SAT_RECOVER;
+    cl.sat=Math.max(0,Math.min(1,cl.sat+satRate*dt/CFG.DAY));
     cl.satBar.setAttribute('width',(72*cl.sat).toFixed(1));
-    const satC=cl.sat>=.7?'#32DC97':cl.sat>=.35?'#e5a94f':'#e5735a';
+    const risk=cl.sat<CFG.SAT_WARN, satC=cl.sat>=.7?'#32DC97':cl.sat>=.35?'#e5a94f':'#e5735a';
     cl.satBar.setAttribute('fill',satC);
     cl.satPct.setAttribute('fill',satC);
-    cl.satPct.textContent='satisfied '+Math.round(cl.sat*100)+'%';
-    if(cl.sat<=0){
-      toast(`${cl.name} cancelled · ${cl.sites.length} site${cl.sites.length>1?'s':''} gone`,'bad');
-      cl.sites.forEach(s=>s.crew.forEach(c=>{S.crew=S.crew.filter(x=>x!==c)}));
-      S.items.filter(i=>i.meta.site&&i.meta.site.client===cl).forEach(killItem);
-      const gi=S.clients.indexOf(cl);
-      cl.g.remove(); S.clients=S.clients.filter(x=>x!==cl); S.shake+=8;
-      if(S.ghosts[gi])S.ghosts[gi].setAttribute('opacity',.4);
-      if(!S.clients.length&&S.day>2)return end('clients');
-    }});
+    cl.satPct.textContent=(risk?'⚠ at risk ':'satisfied ')+Math.round(cl.sat*100)+'%';
+    /* a client kept delighted refers you onward — success itself creates more load (X2) */
+    if(cl.sat>=.95&&S.clients.length<CFG.MAX_CLIENTS&&!S.market.some(m=>m.kind==='contract')){
+      cl.refT-=dt/CFG.DAY;
+      if(cl.refT<=0){cl.refT=CFG.REFERRAL_EVERY;
+        const rn=CFG.CONTRACT_SITES[0]+((rnd()*(CFG.CONTRACT_SITES[1]-CFG.CONTRACT_SITES[0]+1))|0);
+        spawnContract(rn,S.day>=CFG.VIP_FROM_DAY&&rnd()<CFG.VIP_CHANCE);
+        toast(cl.name+' was happy — referred you onward','good');}
+    }else cl.refT=CFG.REFERRAL_EVERY;
+    if(cl.sat<=0)loseClient(cl,'filth');
+    });
 
-  /* chain / shake / entropy — sheet: grime 0.05+g*0.8, saturate 1-g*0.5 */
-  tickMotes(dt);
-  if(S.chainT>0){S.chainT-=dt;if(S.chainT<=0){S.chain=0;$('chainWrap').style.opacity=0}}
+  /* shake / entropy — sheet: grime 0.05+g*0.8, saturate 1-g*0.5 */
   S.shake=Math.max(0,S.shake-dt*20);
   $('stage').style.transform=S.shake>.2?`translate(${(rnd()-.5)*S.shake}px,${(rnd()-.5)*S.shake}px)`:'';
   S.entropy=Math.max(.35,S.entropy-dt*.012);
@@ -1458,20 +1381,32 @@ $('reg').addEventListener('submit',e=>{
 function end(reason){
   if(S.over)return; S.over=true; S.run=false; S.down=false;
   S.paused=false;$('paused').classList.remove('on');document.body.classList.remove('frozen');
-  $('pauseBtn').classList.remove('on');
+  $('pauseBtn').classList.remove('on'); $('claaroBtn').classList.remove('on');
+  /* §7 · a chosen handover is grace (mint, a whole ring); a failure is collapse (red, a broken one) */
+  const grace=reason==='claaro', col=grace?'#32DC97':'#e5735a';
   const D=SAY.died[reason];
-  $('deathTitle').textContent=D.t; $('deathLine').textContent=D.p;
-  /* fail mark: the coordinator with a nearly-empty red ring (sheet END STATES) */
+  /* name the client that actually walked, so the loss reads as located, not abstract (X3) */
+  let line=D.p;
+  if(reason==='clients'&&S.lastLost)
+    line=`${S.lastLost.name} walked — ${S.lastLost.sites} site${S.lastLost.sites>1?'s':''} gone with them. You were busy somewhere else.`;
+  $('deathEyebrow').textContent=grace?'Handover':'Shift over';
+  $('deathEyebrow').style.color=col;
+  $('death').style.background=grace?'radial-gradient(700px 500px at 50% 40%,#0c1a14 0%,#07100c 70%)':'';
+  $('deathTitle').textContent=D.t; $('deathLine').textContent=line;
   const m=$('deathMark'); m.innerHTML='';
   const mk=(t,a)=>{const n=document.createElementNS(NS,t);for(const k in a)n.setAttribute(k,a[k]);m.appendChild(n)};
   mk('circle',{r:69,fill:'none',stroke:'#22322a','stroke-width':6});
-  mk('circle',{r:69,fill:'none',stroke:'#e5735a','stroke-width':6,'stroke-linecap':'round','stroke-dasharray':'34 400',transform:'rotate(-90)'});
-  mk('circle',{r:54,fill:'#131c17',stroke:'rgba(229,115,90,.5)','stroke-width':1.5});
-  mk('circle',{cy:-14,r:16,fill:'rgba(229,115,90,.55)'});
-  mk('path',{d:'M-28 24 A28 28 0 0 1 28 24',fill:'rgba(229,115,90,.55)'});
+  mk('circle',{r:69,fill:'none',stroke:col,'stroke-width':6,'stroke-linecap':'round',
+    'stroke-dasharray':grace?(2*Math.PI*69).toFixed(1):'34 400',transform:'rotate(-90)'});
+  mk('circle',{r:54,fill:'#131c17',stroke:grace?'rgba(50,220,151,.5)':'rgba(229,115,90,.5)','stroke-width':1.5});
+  mk('circle',{cy:-14,r:16,fill:grace?'rgba(50,220,151,.6)':'rgba(229,115,90,.55)'});
+  mk('path',{d:'M-28 24 A28 28 0 0 1 28 24',fill:grace?'rgba(50,220,151,.6)':'rgba(229,115,90,.55)'});
   $('death').classList.add('show');
   setTimeout(()=>{$('death').classList.remove('show');epilogue()},2800)}
 $('againBtn').addEventListener('click',()=>location.reload());
+/* §7 · the voluntary exit: hand the routing to Claaro and stop being the bottleneck */
+function integrate(){if(S.over||!S.run)return; S.integrated=true; end('claaro')}
+$('claaroBtn').addEventListener('click',integrate);
 
 /* ---------- E · epilogue (order mode) ---------- */
 function epilogue(){
@@ -1479,7 +1414,7 @@ function epilogue(){
   $('banner').style.display='none';
   scoreG.style.transition='opacity .8s';scoreG.style.opacity=0;
   $('hint').style.display='none';$('toasts').innerHTML='';$('tip').style.display='none';
-  $('chainWrap').style.opacity=0;$('stage').style.transform='';
+  $('stage').style.transform='';
   document.querySelectorAll('.wob').forEach(n=>n.classList.remove('wob'));
   [Lgrime,Lworld,Lfx,Lfloat].forEach(l=>{l.style.transition='opacity 1.3s';l.style.opacity=0});
   vign.style.transition='opacity 1.3s'; vign.style.opacity=0;
@@ -1530,14 +1465,23 @@ function claaro(){
   setTimeout(showScore,CFG.EPI_SEC*1000)}
 
 /* ---------- score ---------- */
-const LB={key:'shift-happens-lb',
+/* E2 · the board is network-ready: it POSTs to a shared endpoint and reads it back, but
+   always writes locally too, so the percentile and offline play keep working if the API
+   is absent (opened from a file, or before the Pages Function + D1 table are deployed). */
+const LB={key:'shift-happens-lb', api:'/api/shift-happens/scores',
   all(){try{return JSON.parse(localStorage.getItem(this.key)||'[]')}catch(e){return[]}},
-  submit(n,e){const l=this.all();l.push({n,...e});l.sort((a,b)=>b.score-a.score);
-    localStorage.setItem(this.key,JSON.stringify(l.slice(0,50)));return l}};
+  save(l){localStorage.setItem(this.key,JSON.stringify(l.slice(0,50)))},
+  submit(n,e){const l=this.all();l.push({n,...e});l.sort((a,b)=>b.score-a.score);this.save(l);
+    try{fetch(this.api,{method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({name:n,...e})}).catch(()=>{})}catch(_){}
+    return l},
+  async top(){try{const r=await fetch(this.api,{headers:{accept:'application/json'}});
+      if(r.ok){const d=await r.json(); if(Array.isArray(d)&&d.length)return d}}catch(_){}
+    return this.all()}};
 function showScore(){
   const st=S.stats, sites=Math.max(1,st.peakSites);
   const yourMargin=(st.revTotal-st.wageTotal)/Math.max(1,S.day-1)/sites;
-  $('scoreEyebrow').textContent='Closing accounts — '+(S.company||'your company');
+  $('scoreEyebrow').textContent=(S.integrated?'Handover — ':'Closing accounts — ')+(S.company||'your company');
   $('scoreH').textContent=`You lasted ${S.day} days and reached ${st.peakSites} sites.`;
   $('scoreLede').textContent=`The same ${st.peakSites} buildings, the same ${S.day} days, two ways of running them.`;
   $('sSites').textContent=st.peakSites;$('kSites').textContent=st.peakSites;
@@ -1547,19 +1491,25 @@ function showScore(){
   const crewOnly=S.crew.reduce((a,c)=>a+c.rate,0)||CFG.CLEANER_WAGE*sites;
   $('kMargin').textContent=money((sites*CFG.SITE_REV-crewOnly)/sites);
   $('sActs').textContent=st.acts;
-  $('sFocus').textContent=Math.round(st.focusSpent).toLocaleString('en-GB')+' willpower';
+  /* attention is time: a working day is 8h, so N days is N×8×60 minutes — Claaro spends 0 */
+  $('sFocus').textContent=(S.day*8*60).toLocaleString('en-GB')+' minutes';
+  /* a beatable standing, not a bare number — reframes death as an optimization (E2) */
+  const sc=st.peakSites*100+(S.day-1)*10, pc=percentile(sc);
+  $('scorePct').textContent='Better than '+pc+'% of operators';
   $('score').classList.add('show')}
-$('saveBtn').addEventListener('click',()=>{
+$('saveBtn').addEventListener('click',async()=>{
   const name=$('nameIn').value.trim()||'Anonymous operator';
   const sc=S.stats.peakSites*100+(S.day-1)*10;
-  const list=LB.submit(name,{score:sc,days:S.day,sites:S.stats.peakSites});
+  LB.submit(name,{score:sc,days:S.day,sites:S.stats.peakSites});
+  $('saveBtn').disabled=true;$('saveBtn').style.opacity=.5;
+  const list=await LB.top();                       /* networked board if reachable, else local */
   const rows=$('lbRows');rows.innerHTML='';
-  const mine=list.findIndex(e=>e.n===name&&e.score===sc);
+  const mine=list.findIndex(e=>(e.n||e.name)===name&&e.score===sc);
   list.slice(0,8).forEach((e,i)=>{const dv=document.createElement('div');
     dv.className='lbRow'+(i===mine?' me':'');
-    dv.innerHTML=`<span>#${i+1} <b>${e.n.replace(/[<>&]/g,'')}</b></span><span>${e.sites||0} sites · ${e.days} days</span>`;
+    dv.innerHTML=`<span>#${i+1} <b>${String(e.n||e.name||'').replace(/[<>&]/g,'')}</b></span><span>${e.sites||0} sites · ${e.days} days</span>`;
     rows.appendChild(dv)});
-  $('lb').style.display='block';$('saveBtn').disabled=true;$('saveBtn').style.opacity=.5});
+  $('lb').style.display='block'});
 document.addEventListener('visibilitychange',()=>{last=0;S.down=false;
   if(document.hidden)setPaused(true);});   /* away = paused; resume is manual */
 function dbg(){window.FAST=false;
