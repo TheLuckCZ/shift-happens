@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Facility management, as it actually runs</title>
+<meta name="description" content="Six sites, four coordinators, a dozen channels and no system of record — the current state of facility management, drawn.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#07100c;
+    --ink:#eef2f0;
+    --muted:#8fa098;
+    --dim:#5f6f68;
+    --green:#7ee2a8;
+    --line:#6b7d75;
+    --red:#e5735a;
+    --amber:#e5a94f;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--green)}
+  a:hover{color:#a8ecc4}
+
+  .wrap{max-width:2560px;margin:0 auto}
+
+  /* ---------- copy band above the scene ---------- */
+  .copy{
+    padding:clamp(44px,4.5vw,84px) clamp(24px,5vw,96px) clamp(24px,2.6vw,44px);
+    max-width:1080px;
+  }
+  .eyebrow{
+    margin:0 0 18px;
+    font-size:13px;
+    font-weight:600;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--dim);
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  .eyebrow::before{
+    content:"";
+    width:28px;height:1px;
+    background:var(--line);
+    opacity:.7;
+  }
+  h1{
+    margin:0 0 24px;
+    font-size:clamp(30px,3.9vw,58px);
+    line-height:1.08;
+    letter-spacing:-.025em;
+    font-weight:700;
+  }
+  h1 em{
+    font-style:normal;
+    color:var(--muted);
+  }
+  .lede{
+    margin:0;
+    max-width:60ch;
+    font-size:clamp(16px,1.35vw,21px);
+    line-height:1.6;
+    color:var(--muted);
+    font-weight:400;
+  }
+
+  /* ---------- the scene ---------- */
+  .scene{
+    position:relative;
+    width:100%;
+    background:radial-gradient(130% 150% at 50% 42%, #14201a 0%, #0d1210 52%, #080c0a 100%);
+    overflow:hidden;
+  }
+  .scene__inner{
+    position:relative;
+    width:100%;
+    aspect-ratio:2560/1200;
+    container-type:inline-size;
+  }
+  .scene svg{position:absolute;inset:0;display:block;width:100%;height:100%}
+  /* soft vignette so the density reads as depth, not noise */
+  .scene::after{
+    content:"";
+    position:absolute;inset:0;
+    pointer-events:none;
+    background:radial-gradient(120% 130% at 50% 45%, rgba(0,0,0,0) 46%, rgba(0,0,0,.55) 100%);
+  }
+
+  /* ---------- legend strip ---------- */
+  .legend{
+    display:flex;
+    flex-wrap:wrap;
+    gap:clamp(20px,3.5vw,64px);
+    padding:clamp(28px,3.5vw,56px) clamp(24px,5vw,96px) clamp(56px,7vw,110px);
+    border-top:1px solid rgba(107,125,117,.18);
+  }
+  .stat{min-width:130px}
+  .stat b{
+    display:block;
+    font-size:clamp(26px,2.6vw,38px);
+    font-weight:700;
+    letter-spacing:-.02em;
+    line-height:1.1;
+  }
+  .stat span{
+    display:block;
+    margin-top:6px;
+    font-size:13px;
+    font-weight:500;
+    color:var(--dim);
+    letter-spacing:.02em;
+  }
+  .stat--warn b{color:var(--amber)}
+  .stat--bad b{color:var(--red)}
+
+  /* On phones the 2560-wide scene collapses into mush — let it scroll instead. */
+  @media (max-width:760px){
+    .scene{overflow-x:auto;-webkit-overflow-scrolling:touch}
+    .scene__inner{width:1500px;max-width:none}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation-duration:.001ms !important}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="copy">
+    <p class="eyebrow">The current state</p>
+    <h1>Facility management still runs on <em>phone calls, group chats and paper.</em></h1>
+    <p class="lede">Six sites. Four coordinators. Every request starts somewhere different — a call, a WhatsApp group, a sheet on a clipboard by the door — and most of it never leaves the building it was created in.</p>
+  </header>
+
+  <section class="scene" aria-label="Diagram: information trapped across six disconnected facility sites">
+    <div class="scene__inner">
+      <svg id="chaos" viewBox="0 0 2560 1200" preserveAspectRatio="xMidYMid meet" role="img"
+           aria-label="Six site clusters connected by a tangle of phone, chat, email, spreadsheet and paper channels, with dropped messages, unanswered calls and overflowing paper sign-in sheets."></svg>
+    </div>
+  </section>
+
+  <section class="legend">
+    <div class="stat"><b>6</b><span>Sites</span></div>
+    <div class="stat"><b>16</b><span>People in the loop</span></div>
+    <div class="stat"><b>12</b><span>Channels in use</span></div>
+    <div class="stat stat--warn"><b>0</b><span>Systems of record</span></div>
+    <div class="stat stat--bad"><b>&infin;</b><span>Places to lose a request</span></div>
+  </section>
+
+</div>
+
+<script>
+/* =====================================================================
+   CHAOS SCENE
+   Built in JS so density stays tunable: everything below is data +
+   a few primitive renderers. Deterministic (seeded PRNG) so the
+   composition never re-rolls between loads.
+   ===================================================================== */
+(function(){
+  var NS = 'http://www.w3.org/2000/svg';
+  var svg = document.getElementById('chaos');
+
+  /* ---------- palette ---------- */
+  var C = {
+    line:'#6b7d75', line2:'#8a9c94', dot:'#9db0a8', dotDim:'#8a9c94',
+    glyph:'#c9d6d0', label:'#c3cec9', site:'#7f8f88', ring:'#3a4a43',
+    green:'#7ee2a8', red:'#e5735a', amber:'#e5a94f', caption:'#5f6f68',
+    paper:'#141e19', paperDim:'#101813'
+  };
+  var FONT = "'Plus Jakarta Sans',sans-serif";
+
+  /* ---------- seeded PRNG (fixed composition) ---------- */
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+  var rnd = mulberry32(20260720);
+  function R(a,b){return a+rnd()*(b-a)}
+  function pick(arr){return arr[Math.floor(rnd()*arr.length)]}
+
+  /* ---------- svg primitives ---------- */
+  function el(tag,attrs,parent){
+    var n=document.createElementNS(NS,tag);
+    for(var k in attrs){ if(attrs[k]!==null&&attrs[k]!==undefined) n.setAttribute(k,attrs[k]); }
+    (parent||svg).appendChild(n);
+    return n;
+  }
+  function g(attrs,parent){ return el('g',attrs,parent); }
+  function txt(x,y,s,attrs,parent){
+    var t=el('text',Object.assign({x:x,y:y,'font-family':FONT},attrs),parent);
+    t.textContent=s; return t;
+  }
+  /* animate helper: <animate>/<animateTransform> child */
+  function anim(node,attrs,tag){ return el(tag||'animate',attrs,node); }
+
+  /* curved connector with a signed bow, so lines arc instead of running straight */
+  function curve(ax,ay,bx,by,bow){
+    var dx=bx-ax, dy=by-ay, L=Math.hypot(dx,dy)||1;
+    var nx=-dy/L, ny=dx/L;
+    return 'M'+ax+' '+ay+' C'+(ax+dx*.3+nx*bow)+' '+(ay+dy*.3+ny*bow)+' '
+             +(ax+dx*.7+nx*bow)+' '+(ay+dy*.7+ny*bow)+' '+bx+' '+by;
+  }
+
+  /* ---------- defs ---------- */
+  var defs = el('defs',{});
+  var dead = el('linearGradient',{id:'deadfade',x1:0,y1:0,x2:1,y2:0},defs);
+  el('stop',{offset:0,'stop-color':C.line,'stop-opacity':.55},dead);
+  el('stop',{offset:.6,'stop-color':C.line,'stop-opacity':.18},dead);
+  el('stop',{offset:1,'stop-color':C.line,'stop-opacity':0},dead);
+  var chip = el('radialGradient',{id:'chipfill',cx:'50%',cy:'42%',r:'60%'},defs);
+  el('stop',{offset:0,'stop-color':'#1a2620'},chip);
+  el('stop',{offset:1,'stop-color':'#0f1713'},chip);
+  var faceFill = el('radialGradient',{id:'facefill',cx:'50%',cy:'35%',r:'75%'},defs);
+  el('stop',{offset:0,'stop-color':'#26332c'},faceFill);
+  el('stop',{offset:1,'stop-color':'#131c17'},faceFill);
+
+  /* ---------- paint order ---------- */
+  var Lrings   = g({},svg);
+  var Llinks   = g({},svg);
+  var Ldots    = g({},svg);
+  var Lpaper   = g({},svg);
+  var Lchips   = g({},svg);
+  var Lpeople  = g({},svg);
+  var Lbadges  = g({},svg);
+  var Ltext    = g({},svg);
+
+  /* =====================================================================
+     1. SITE ISLANDS  (was 3 → now 6)
+     ===================================================================== */
+  var SITES = [
+    {n:'Site A', x:380,  y:330, r:196},
+    {n:'Site B', x:1140, y:258, r:162},
+    {n:'Site C', x:2000, y:270, r:190},
+    {n:'Site D', x:2290, y:830, r:172},
+    {n:'Site E', x:1560, y:930, r:188},
+    {n:'Site F', x:640,  y:880, r:178}
+  ];
+  SITES.forEach(function(s){
+    el('circle',{cx:s.x,cy:s.y,r:s.r,fill:'none',stroke:C.ring,
+      'stroke-width':1.5,'stroke-dasharray':'3 12',opacity:.75},Lrings);
+    /* a second, fainter ring on a couple of sites — walls within walls */
+    if(s.n==='Site C'||s.n==='Site F'){
+      el('circle',{cx:s.x,cy:s.y,r:s.r-34,fill:'none',stroke:C.ring,
+        'stroke-width':1,'stroke-dasharray':'2 14',opacity:.4},Lrings);
+    }
+    txt(s.x, s.y-s.r-22, s.n, {fill:C.site,'font-size':24,'font-weight':600,
+      'letter-spacing':.5,'text-anchor':'middle'},Ltext);
+  });
+
+  /* =====================================================================
+     2. GLYPH LIBRARY — drawn in a 24-unit box centred on the origin
+     ===================================================================== */
+  var GLYPHS = {
+    phone:[['path',{d:'M-9 -7 q0 -3 3 -3 h2.6 q1.6 0 2 1.5 l1 4 q.4 1.6 -1 2.4 l-1.9 1.1 q2 3.9 5.8 5.8 l1.1 -1.9 q.8 -1.4 2.4 -1 l4 1 q1.5 .4 1.5 2 v2.6 q0 3 -3 3 Q-9 9.6 -9 -7 z'}]],
+    chatRound:[['rect',{x:-10,y:-9.5,width:20,height:15,rx:6}],['path',{d:'M-5 5.5 l-2.4 6.6 l7.4 -6.6'}]],
+    chatSquare:[['rect',{x:-10,y:-9,width:20,height:14,rx:1.6}],['path',{d:'M-5 5 l-1.6 6.4 l6.4 -6.4'}]],
+    sms:[['rect',{x:-10,y:-6.5,width:20,height:13,rx:6.5}],['path',{d:'M-5.5 6.5 l-2 5.4 l6 -5.4'}],
+         ['circle',{cx:-4,cy:0,r:1.1,solid:1}],['circle',{cx:0,cy:0,r:1.1,solid:1}],['circle',{cx:4,cy:0,r:1.1,solid:1}]],
+    envelope:[['rect',{x:-11,y:-8,width:22,height:16,rx:2}],['path',{d:'M-11 -6.8 L0 2.2 L11 -6.8'}]],
+    sheet:[['rect',{x:-9.5,y:-11,width:19,height:22,rx:1.6}],['path',{d:'M-9.5 -4 H9.5'}],['path',{d:'M-9.5 3 H9.5'}],['path',{d:'M-2 -11 V11'}]],
+    clipboard:[['rect',{x:-8.5,y:-9,width:17,height:20,rx:2.2}],['rect',{x:-4.5,y:-12.5,width:9,height:5.4,rx:1.8}],
+               ['path',{d:'M-4.5 -2 h9'}],['path',{d:'M-4.5 3.5 h9'}],['path',{d:'M-4.5 -6.5 h5'}]],
+    clock:[['circle',{cx:0,cy:0,r:10.5}],['path',{d:'M0 -5.6 V.6 L4.4 3.4'}]],
+    calendar:[['rect',{x:-10,y:-8.5,width:20,height:18.5,rx:2.2}],['path',{d:'M-10 -2.6 H10'}],
+              ['path',{d:'M-5 -12 v5'}],['path',{d:'M5 -12 v5'}]],
+    doc:[['path',{d:'M-7.5 -11.5 h8.5 l6 6 v17 h-14.5 z'}],['path',{d:'M1 -11.5 v6 h6'}],
+         ['path',{d:'M-4 1 h8'}],['path',{d:'M-4 6 h8'}]],
+    printer:[['rect',{x:-10.5,y:-3.5,width:21,height:10.5,rx:2.2}],['path',{d:'M-6.5 -3.5 v-7.5 h13 v7.5'}],
+             ['rect',{x:-6.5,y:3.5,width:13,height:8.5,rx:1.2}]],
+    camera:[['rect',{x:-11,y:-6,width:22,height:15.5,rx:3}],['circle',{cx:0,cy:1.6,r:4.6}],
+            ['path',{d:'M-4.4 -6 l1.9 -3.4 h5 l1.9 3.4'}]],
+    key:[['circle',{cx:-5.5,cy:0,r:5.2}],['path',{d:'M-.4 0 H11'}],['path',{d:'M7.4 0 v4.2'}],['path',{d:'M3.6 0 v3.4'}]],
+    voicemail:[['circle',{cx:-6,cy:.5,r:5}],['circle',{cx:6,cy:.5,r:5}],['path',{d:'M-6 5.5 H6'}]],
+    radio:[['rect',{x:-7,y:-4,width:14,height:15,rx:2.2}],['path',{d:'M4 -4 L9.5 -12'}],
+           ['path',{d:'M-4 0 h8'}],['circle',{cx:0,cy:6,r:2.2}]],
+    sticky:[['path',{d:'M-9.5 -9.5 h19 v12 l-7 7 h-12 z'}],['path',{d:'M9.5 2.5 h-7 v7'}]],
+    folder:[['path',{d:'M-11 -7.5 h7.5 l3 3.2 h11.5 v13.8 h-22 z'}]],
+    pin:[['path',{d:'M0 11.5 s-7.4 -8.6 -7.4 -12.7 a7.4 7.4 0 1 1 14.8 0 c0 4.1 -7.4 12.7 -7.4 12.7 z'}],
+         ['circle',{cx:0,cy:-1.4,r:2.7}]],
+    linkBroken:[['path',{d:'M-1.5 -5.5 l-3.4 -3.4 a5.4 5.4 0 0 0 -7.6 7.6 l3.4 3.4'}],
+                ['path',{d:'M1.5 5.5 l3.4 3.4 a5.4 5.4 0 0 0 7.6 -7.6 l-3.4 -3.4'}],
+                ['path',{d:'M-2 2 l4 -4'}]],
+    lock:[['rect',{x:-8,y:-2,width:16,height:12,rx:2.2}],['path',{d:'M-4.8 -2 v-4.2 a4.8 4.8 0 0 1 9.6 0 v4.2'}]],
+    bell:[['path',{d:'M-8.4 5.4 c3 -2.2 3 -4.4 3 -8.4 a5.4 5.4 0 0 1 10.8 0 c0 4 0 6.2 3 8.4 z'}],
+          ['path',{d:'M-2.4 8.4 a2.4 2.4 0 0 0 4.8 0'}]],
+    warn:[['path',{d:'M0 -10.5 L10.5 8.5 H-10.5 Z'}],['path',{d:'M0 -4.4 v5.4'}],['circle',{cx:0,cy:4.6,r:1.3,solid:1}]],
+    stack:[['rect',{x:-10,y:2,width:20,height:6,rx:1.4}],['rect',{x:-8.5,y:-4.5,width:17,height:6,rx:1.4}],
+           ['rect',{x:-7,y:-11,width:14,height:6,rx:1.4}]]
+  };
+
+  function drawGlyph(parent,name,size){
+    var parts = GLYPHS[name]; if(!parts) return;
+    var s = size/24;
+    var gg = g({transform:'scale('+s.toFixed(3)+')',fill:'none',stroke:C.glyph,
+      'stroke-width':2,'stroke-linecap':'round','stroke-linejoin':'round'},parent);
+    parts.forEach(function(p){
+      var a = Object.assign({},p[1]);
+      if(a.solid){ delete a.solid; a.fill=C.glyph; a.stroke='none'; }
+      el(p[0],a,gg);
+    });
+    return gg;
+  }
+
+  /* =====================================================================
+     3. CHANNEL CHIPS  (was 6 → now 22, deliberately mismatched shapes)
+        shape: 'circle' | 'round' (rounded square) | 'square'
+        badge: {type:'err'|'ask'|'warn'|'count', v:'47'}
+     ===================================================================== */
+  var CHIPS = [
+    /* --- the loud ones, labelled --- */
+    {x:980, y:430, r:44, s:'circle', i:'phone',      label:'Phone calls',   ring:true},
+    {x:1440,y:560, r:38, s:'circle', i:'chatRound',  label:'Group chats',   badge:{t:'count',v:'47'}},
+    {x:1880,y:500, r:40, s:'square', i:'envelope',   label:'Email',         badge:{t:'count',v:'128'}},
+    {x:1050,y:770, r:36, s:'square', i:'sheet',      label:'Spreadsheets',  badge:{t:'warn'}},
+    {x:760, y:500, r:34, s:'round',  i:'clipboard',  label:'Checklists'},
+    {x:1800,y:815, r:33, s:'circle', i:'camera',     label:'Photos on phones'},
+    {x:420, y:640, r:32, s:'round',  i:'radio',      label:'Radio'},
+    {x:2265,y:480, r:34, s:'square', i:'calendar',   label:'Shift rota',    badge:{t:'err'}},
+    {x:1260,y:690, r:31, s:'circle', i:'voicemail',  label:'Voicemail',     badge:{t:'count',v:'9'}},
+
+    /* --- the quiet clutter, unlabelled --- */
+    {x:1330,y:300, r:29, s:'circle', i:'sms'},
+    {x:860, y:290, r:27, s:'round',  i:'doc'},
+    {x:1560,y:205, r:26, s:'circle', i:'clock'},
+    {x:1975,y:770, r:30, s:'square', i:'printer',    badge:{t:'err'}},
+    {x:770, y:700, r:26, s:'circle', i:'key'},
+    {x:2330,y:240, r:28, s:'round',  i:'folder'},
+    {x:1420,y:430, r:25, s:'circle', i:'linkBroken', badge:{t:'ask'}},
+    {x:2110,y:640, r:27, s:'square', i:'lock'},
+    {x:1790,y:340, r:25, s:'circle', i:'bell',       badge:{t:'count',v:'12'}},
+    {x:1180,y:900, r:27, s:'round',  i:'stack'},
+    {x:560, y:1030,r:26, s:'circle', i:'chatSquare'},
+    {x:2400,y:1030,r:28, s:'square', i:'sheet',      badge:{t:'warn'}},
+    {x:930, y:1080,r:25, s:'circle', i:'pin'}
+  ];
+
+  CHIPS.forEach(function(c,idx){
+    var gg = g({},Lchips);
+    /* unanswered-call rings — the phone chip pulses and then drops out */
+    if(c.ring){
+      var ringG = g({},gg);
+      anim(ringG,{attributeName:'opacity',dur:'8s',repeatCount:'indefinite',
+        values:'1;1;0.35;0;0;1',keyTimes:'0;0.5;0.62;0.72;0.92;1'});
+      [0,-1.3].forEach(function(b){
+        var rc = el('circle',{cx:c.x,cy:c.y,r:c.r,fill:'none',stroke:C.green,
+          'stroke-width':2,opacity:0},ringG);
+        anim(rc,{attributeName:'r',dur:'2.6s',begin:b+'s',repeatCount:'indefinite',
+          values:c.r+';'+(c.r+38)});
+        anim(rc,{attributeName:'opacity',dur:'2.6s',begin:b+'s',repeatCount:'indefinite',
+          values:'0.5;0'});
+      });
+    }
+    /* the chip body — three different silhouettes, on purpose */
+    if(c.s==='circle'){
+      el('circle',{cx:c.x,cy:c.y,r:c.r,fill:'url(#chipfill)',stroke:'#7c8d85','stroke-width':1.5},gg);
+    }else{
+      var w=c.r*1.92;
+      el('rect',{x:c.x-w/2,y:c.y-w/2,width:w,height:w,
+        rx:(c.s==='round'? w*0.24 : w*0.09),
+        fill:'url(#chipfill)',stroke:'#7c8d85','stroke-width':1.5},gg);
+    }
+    var holder = g({transform:'translate('+c.x+','+c.y+')'},gg);
+    drawGlyph(holder,c.i,c.r*1.16);
+
+    if(c.label){
+      txt(c.x, c.y+c.r+30, c.label, {fill:C.label,'font-size':21,
+        'font-weight':500,'text-anchor':'middle'},Ltext);
+    }
+    if(c.badge) badge(c.x+c.r*0.78, c.y-c.r*0.78, c.badge, idx);
+  });
+
+  /* ---------- status badges (was 2 → now 14) ---------- */
+  function badge(x,y,b,seed){
+    var gg = g({transform:'translate('+x+','+y+')'},Lbadges);
+    var r  = (b.t==='count') ? (String(b.v).length>2?17:14) : 15;
+    var fill = b.t==='warn' ? C.amber : C.red;
+    var ink  = b.t==='warn' ? '#1a1305' : '#1a0d0a';
+    if(b.t==='count'){ fill=C.red; }
+    var body = (b.t==='count' && String(b.v).length>2)
+      ? el('rect',{x:-r,y:-13,width:r*2,height:26,rx:13,fill:fill},gg)
+      : el('circle',{r:r,fill:fill},gg);
+    anim(body,{attributeName:'opacity',dur:(2.8+(seed%5)*.4).toFixed(1)+'s',
+      begin:(-(seed%4)).toFixed(0)+'s',repeatCount:'indefinite',
+      values:'1;1;0.4;1',keyTimes:'0;0.6;0.8;1'});
+    if(b.t==='count'){
+      txt(0,6,b.v,{fill:ink,'font-size':18,'font-weight':700,'text-anchor':'middle'},gg);
+    }else if(b.t==='ask'){
+      txt(0,7,'?',{fill:ink,'font-size':21,'font-weight':700,'text-anchor':'middle'},gg);
+    }else{
+      el('rect',{x:-2,y:-7,width:4,height:8,rx:2,fill:ink},gg);
+      el('circle',{cx:0,cy:6,r:2,fill:ink},gg);
+    }
+  }
+
+  /* =====================================================================
+     4. PAPER — sign-in sheets, pens, sticky notes  (was 3 sheets → now 19)
+     ===================================================================== */
+  function sheet(x,y,opts){
+    opts=opts||{};
+    var gg = g({transform:'translate('+x+','+y+')'+(opts.rot?' rotate('+opts.rot+')':'')},Lpaper);
+    if(opts.full){
+      /* shakes when it's full — nobody has collected it */
+      anim(gg,{attributeName:'transform',type:'translate',additive:'sum',dur:'6s',
+        repeatCount:'indefinite',values:'0 0;0 0;-2 0;2 0;-1.4 0;1.4 0;0 0',
+        keyTimes:'0;0.78;0.84;0.88;0.92;0.96;1'},'animateTransform');
+      el('rect',{x:-20,y:-34,width:48,height:60,rx:4,fill:C.paperDim,stroke:C.line,'stroke-width':1.3,transform:'rotate(-6)'},gg);
+      el('rect',{x:-28,y:-31,width:48,height:60,rx:4,fill:'none',stroke:C.line,'stroke-width':1.3,transform:'rotate(5)'},gg);
+    }
+    el('rect',{x:-24,y:-30,width:48,height:60,rx:4,fill:C.paper,stroke:C.line2,'stroke-width':1.6},gg);
+    el('rect',{x:-9,y:-36,width:18,height:9,rx:3,fill:C.paper,stroke:C.line2,'stroke-width':1.6},gg);
+    var rows = opts.full?5:3, y0 = opts.full?-18:-14;
+    for(var i=0;i<rows;i++){
+      el('path',{d:'M-16 '+(y0+i*(opts.full?10:12))+' q6 -5 12 0 t12 0',
+        fill:'none',stroke:C.line,'stroke-width':1.4},gg);
+    }
+    if(opts.full){
+      var bg = g({transform:'translate(24,-32)'},gg);
+      var bc = el('circle',{r:11,fill:C.amber},bg);
+      anim(bc,{attributeName:'opacity',dur:'2s',repeatCount:'indefinite',values:'0.45;1;0.45'});
+      el('rect',{x:-1.5,y:-5,width:3,height:6,rx:1.5,fill:'#1a1305'},bg);
+      el('circle',{cx:0,cy:4,r:1.6,fill:'#1a1305'},bg);
+    }
+    if(opts.label) txt(x,y+57,opts.label,{fill:C.label,'font-size':20,'font-weight':500,'text-anchor':'middle'},Ltext);
+  }
+  function pen(x,y,rot){
+    var gg = g({transform:'translate('+x+','+y+') rotate('+(rot||38)+')'},Lpaper);
+    el('rect',{x:-3,y:-20,width:6,height:34,rx:2,fill:C.paper,stroke:C.line2,'stroke-width':1.4},gg);
+    el('path',{d:'M-3 14 l3 8 l3 -8 z',fill:C.glyph},gg);
+  }
+  function note(x,y,rot,peel){
+    var gg = g({transform:'translate('+x+','+y+') rotate('+rot+')'},Lpaper);
+    el('path',{d:'M-17 -17 h34 v22 l-12 12 h-22 z',fill:C.paper,stroke:C.line2,'stroke-width':1.4},gg);
+    el('path',{d:'M17 5 h-12 v12',fill:'none',stroke:C.line2,'stroke-width':1.4},gg);
+    for(var i=0;i<3;i++){
+      el('path',{d:'M-11 '+(-9+i*8)+' q5 -4 10 0 t9 0',fill:'none',stroke:C.line,'stroke-width':1.2,opacity:.75},gg);
+    }
+    if(peel){ /* one note is quietly falling off the wall */
+      anim(gg,{attributeName:'transform',type:'rotate',additive:'sum',dur:'9s',
+        repeatCount:'indefinite',values:'0;0;-14;-3;0',keyTimes:'0;0.7;0.85;0.95;1'},'animateTransform');
+    }
+  }
+
+  /* one sign-in sheet + pen per site; three of them overflowing */
+  var PAPERS = [
+    {x:545, y:215,  pen:[560,300],  label:'Paper sign-in'},
+    {x:1245,y:130,  pen:[1262,208], full:true},
+    {x:2150,y:380,  pen:[2160,470], full:true, label:'Paper sign-in'},
+    {x:2350,y:718,  pen:[2360,800]},
+    {x:1600,y:880,  pen:[1612,968], full:true},
+    {x:700, y:790,  pen:[712,872],  label:'Paper sign-in'}
+  ];
+  PAPERS.forEach(function(p){
+    sheet(p.x,p.y,{full:p.full,label:p.label,rot:R(-5,5)});
+    pen(p.pen[0],p.pen[1],R(28,52));
+  });
+
+  /* sticky notes scattered across the sites — the real task list */
+  var NOTES = [[300,430],[470,222],[1180,320],[2038,395],[2360,940],
+               [1390,1090],[490,1000],[790,960],[1985,140],[335,196]];
+  NOTES.forEach(function(n,i){ note(n[0],n[1],R(-16,16), i===3||i===6); });
+
+  /* =====================================================================
+     5. PEOPLE  (was 5 → now 16). Faceless, desaturated: anyone, everywhere.
+     ===================================================================== */
+  var PEOPLE = [
+    /* on site */
+    {x:300, y:330, r:46, role:'Cleaner'},
+    {x:452, y:404, r:38, role:''},
+    {x:1075,y:262, r:44, role:'Cleaner'},
+    {x:1930,y:318, r:46, role:'Technician'},
+    {x:2070,y:196, r:36, role:''},
+    {x:2258,y:892, r:44, role:'Security'},
+    {x:1478,y:986, r:46, role:'Cleaner'},
+    {x:1608,y:1042,r:34, role:''},
+    {x:598, y:930, r:44, role:'Cleaner'},
+    {x:790, y:830, r:34, role:''},
+    /* in the middle — the human routers */
+    {x:1180,y:520, r:58, role:'Dispatch', stress:true},
+    {x:1720,y:640, r:56, role:'Ops',      stress:true},
+    {x:900, y:620, r:50, role:'Payroll'},
+    {x:1640,y:400, r:48, role:'Scheduler',stress:true},
+    /* the client side, waiting */
+    {x:2450,y:520, r:42, role:'Client'},
+    {x:300, y:760, r:40, role:'Client'}
+  ];
+
+  PEOPLE.forEach(function(p){
+    var gg = g({},Lpeople);
+    if(p.stress){ /* an ambient halo — always mid-call */
+      var h = el('circle',{cx:p.x,cy:p.y,r:p.r+8,fill:'none',stroke:C.line2,'stroke-width':1.2,opacity:.28},gg);
+      anim(h,{attributeName:'r',dur:'3.4s',repeatCount:'indefinite',values:(p.r+6)+';'+(p.r+22)});
+      anim(h,{attributeName:'opacity',dur:'3.4s',repeatCount:'indefinite',values:'0.35;0'});
+    }
+    el('circle',{cx:p.x,cy:p.y,r:p.r,fill:'url(#facefill)',
+      stroke:'rgba(232,238,235,0.38)','stroke-width':1.5},gg);
+    /* silhouette, clipped to the disc */
+    var cid='clip'+Math.round(p.x)+'_'+Math.round(p.y);
+    var cp = el('clipPath',{id:cid},defs);
+    el('circle',{cx:p.x,cy:p.y,r:p.r},cp);
+    var sil = g({'clip-path':'url(#'+cid+')',fill:'#5d6f66',opacity:.9},gg);
+    /* small build variations so sixteen people don't read as one stamp */
+    var hs=R(.27,.33), hy=R(.14,.22), sw=R(.56,.70), sh=R(.54,.66);
+    el('circle',{cx:p.x,cy:p.y-p.r*hy,r:p.r*hs},sil);
+    el('path',{d:'M'+(p.x-p.r*sw)+' '+(p.y+p.r)+
+      ' a'+(p.r*sw)+' '+(p.r*sh)+' 0 0 1 '+(p.r*sw*2)+' 0 z'},sil);
+    /* the coordinators are permanently mid-call */
+    if(p.stress){
+      var pb = g({transform:'translate('+(p.x+p.r*.72)+','+(p.y-p.r*.72)+')'},gg);
+      el('circle',{r:15,fill:'#0f1713',stroke:'#7c8d85','stroke-width':1.3},pb);
+      drawGlyph(pb,'phone',19);
+    }
+    if(p.role){
+      txt(p.x,p.y+p.r+28,p.role,{fill:'#eef2f0','font-size':20,
+        'font-weight':600,'text-anchor':'middle'},Ltext);
+    }
+  });
+
+  /* =====================================================================
+     6. THE TANGLE  (was ~22 paths → now ~54)
+        Every line is a message that had to be carried by a person.
+     ===================================================================== */
+  var animPaths = [];   /* paths that will carry a travelling dot */
+  function link(ax,ay,bx,by,o){
+    o=o||{};
+    var id = 'p'+animPaths.length;
+    var p = el('path',{id:id,d:curve(ax,ay,bx,by,o.bow||0),fill:'none',
+      stroke:o.stroke||C.line,'stroke-width':o.w||1.4,
+      'stroke-dasharray':o.dash||null,
+      'stroke-linecap':o.dash?'round':null,
+      opacity:o.op!==undefined?o.op:.5},Llinks);
+    if(o.carry!==false) animPaths.push(id);
+    return p;
+  }
+  var DASH = [null,'1 7','9 7','7 6','2 10',null,'1 7'];
+
+  /* --- local, within-site lines: information circling its own building --- */
+  SITES.forEach(function(s,si){
+    for(var k=0;k<4;k++){
+      var a1=R(0,6.28), a2=a1+R(1.1,2.6);
+      var r1=s.r*R(.42,.92), r2=s.r*R(.42,.92);
+      link(s.x+Math.cos(a1)*r1, s.y+Math.sin(a1)*r1,
+           s.x+Math.cos(a2)*r2, s.y+Math.sin(a2)*r2,
+           {bow:R(-40,40),dash:pick(DASH),op:R(.3,.55),w:R(1.1,1.5),carry:k===0});
+    }
+  });
+
+  /* --- cross-site + channel lines: the only things that bridge islands --- */
+  var HUBS = {
+    dispatch:[1180,520], ops:[1720,640], payroll:[900,620], sched:[1640,400],
+    A:[380,330], B:[1140,215], C:[2000,270], D:[2290,830], E:[1560,930], F:[640,880],
+    phone:[980,430], chat:[1440,560], mail:[1880,500], sheets:[1050,770],
+    cli1:[2450,520], cli2:[300,760]
+  };
+  var EDGES = [
+    ['dispatch','A',120],['dispatch','B',-70],['dispatch','C',-190],['dispatch','phone',30],
+    ['dispatch','chat',-40],['dispatch','sheets',60],['dispatch','F',90],['dispatch','ops',-120],
+    ['ops','C',110],['ops','D',-80],['ops','E',70],['ops','chat',-30],['ops','mail',40],
+    ['ops','sched',60],['ops','phone',-160],
+    ['payroll','A',-90],['payroll','F',50],['payroll','sheets',-40],['payroll','B',130],
+    ['payroll','phone',-30],
+    ['sched','B',-110],['sched','C',60],['sched','D',-150],['sched','E',170],['sched','mail',-40],
+    ['phone','A',80],['phone','F',-60],['chat','E',60],['chat','B',-90],
+    ['mail','C',-50],['mail','D',70],['sheets','F',-40],['sheets','E',80],
+    ['cli1','D',-60],['cli1','ops',110],['cli2','F',50],['cli2','A',-60],
+    ['A','F',-140],['C','D',90],['B','C',-60],['E','D',-90],['B','E',200]
+  ];
+  EDGES.forEach(function(e,i){
+    var a=HUBS[e[0]], b=HUBS[e[1]];
+    link(a[0],a[1],b[0],b[1],{bow:e[2],dash:DASH[i%DASH.length],
+      op:R(.28,.6),w:R(1.1,1.6)});
+  });
+
+  /* --- capillaries: no channel floats free. Every chip is wired to the two
+         nearest bodies, because someone always ends up carrying it by hand. --- */
+  var ANCHORS = PEOPLE.map(function(p){return [p.x,p.y]})
+                      .concat(SITES.map(function(s){return [s.x,s.y]}));
+  CHIPS.forEach(function(c){
+    var near = ANCHORS.map(function(a){
+      return {a:a,d:Math.hypot(a[0]-c.x,a[1]-c.y)};
+    }).sort(function(p,q){return p.d-q.d}).slice(0, c.label?1:2);
+    near.forEach(function(h){
+      link(c.x,c.y,h.a[0],h.a[1],{bow:R(-55,55),dash:pick(DASH),
+        op:R(.18,.34),w:R(1,1.3),carry:false});
+    });
+  });
+
+  /* --- dead ends: the call that went nowhere --- */
+  [['dispatch',1290,860],['ops',2050,1010],['payroll',560,380],
+   ['sched',1880,180],['chat',1720,470]].forEach(function(d){
+    var a=HUBS[d[0]];
+    el('path',{d:curve(a[0],a[1],d[1],d[2],R(-70,70)),fill:'none',
+      stroke:'url(#deadfade)','stroke-width':1.6},Llinks);
+  });
+
+  /* =====================================================================
+     7. TRAVELLING DOTS  (was 9 → now 24). Most of them misbehave.
+     ===================================================================== */
+  var BEHAVIOURS = [
+    {kp:'0;1',           kt:'0;1'},                        /* steady        */
+    {kp:'0;0.46;0.46;1', kt:'0;0.32;0.66;1'},              /* stalls        */
+    {kp:'0;0.72;0.34;1', kt:'0;0.42;0.66;1'},              /* backtracks    */
+    {kp:'0;0.2;0.2;0.6;0.6;1', kt:'0;0.15;0.4;0.55;0.8;1'},/* stop-start    */
+    {kp:'0;1',           kt:'0;1'},
+    {kp:'0;0.55;0.55',   kt:'0;0.5;1', lost:true}          /* never arrives */
+  ];
+  var shuffled = animPaths.slice();
+  for(var i=shuffled.length-1;i>0;i--){var j=Math.floor(rnd()*(i+1));var t=shuffled[i];shuffled[i]=shuffled[j];shuffled[j]=t;}
+  shuffled.slice(0,24).forEach(function(pid,i){
+    var b = BEHAVIOURS[i%BEHAVIOURS.length];
+    var dur = R(6,10.5).toFixed(1)+'s';
+    var c = el('circle',{r:R(4,5.6).toFixed(1),
+      fill:b.lost?C.green:(i%3?C.dot:C.dotDim),
+      opacity:b.lost?0:R(.7,1).toFixed(2)},Ldots);
+    var m = el('animateMotion',{dur:dur,begin:(-R(0,6)).toFixed(1)+'s',
+      repeatCount:'indefinite',calcMode:'linear',keyPoints:b.kp,keyTimes:b.kt},c);
+    el('mpath',{href:'#'+pid},m);
+    if(b.lost){ /* fades out mid-flight — the message that was never seen */
+      anim(c,{attributeName:'opacity',dur:dur,repeatCount:'indefinite',
+        values:'0;0.95;0.95;0;0',keyTimes:'0;0.1;0.45;0.6;1'});
+    }
+  });
+
+  /* =====================================================================
+     8. CAPTION
+     ===================================================================== */
+  txt(48,1118,'Information trapped on-site.',{fill:C.caption,'font-size':23,'font-weight':500},Ltext);
+  txt(48,1152,'Coordination by phone, chat, and paper.',{fill:C.caption,'font-size':23,'font-weight':500},Ltext);
+
+  /* respect reduced-motion: freeze the whole scene */
+  if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+    if(svg.pauseAnimations) svg.pauseAnimations();
+  }
+})();
+</script>
+</body>
+</html>
