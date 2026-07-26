@@ -59,6 +59,8 @@
   .wob{animation:wob 3.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
   @keyframes beamGlow{0%,100%{opacity:.55}50%{opacity:.95}}
   @keyframes flow{from{offset-distance:0%}to{offset-distance:100%}}
+  @keyframes ants{to{stroke-dashoffset:-18}}
+  @keyframes rowflash{from{background:rgba(50,220,151,.5)}to{background:rgba(50,220,151,.12)}}
   @media (prefers-reduced-motion:reduce){.wob{animation:none}}
 
   /* ── HUD ─────────────────────────────────────────────────────── */
@@ -79,16 +81,25 @@
     display:flex;flex-direction:column;gap:5px;
     /* a big payroll scrolls rather than running down over the buildings */
     max-height:calc(100vh - 190px);overflow-y:auto;scrollbar-width:thin}
+  /* rows keep their own height and the pane scrolls instead: a .rRow is overflow:hidden, so as
+     a flex item its automatic minimum is 0 and a long payroll would squash rather than scroll */
+  #roster>*{flex:0 0 auto}
   #roster::-webkit-scrollbar{width:5px}
   #roster::-webkit-scrollbar-thumb{background:var(--edge);border-radius:999px}
   #rosterLab{font:700 9.5px/1 var(--f-chaos);letter-spacing:.14em;text-transform:uppercase;
     color:var(--faint);margin-bottom:8px}
   .rRow{position:relative;overflow:hidden;border:1px solid var(--edge);border-radius:8px;
-    background:rgba(10,19,15,.72);padding:6px 7px;cursor:pointer;user-select:none;
+    background:rgba(10,19,15,.72);padding:6px 7px 6px 11px;cursor:pointer;user-select:none;
     transition:border-color .15s,background .15s}
+  /* the edge stripe says whether they are earning: green on a site, red idle on the bench */
+  .rRow::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--mint)}
+  .rRow.bench::before{background:var(--red)}
   .rRow:hover{border-color:#3a4a43;background:rgba(14,26,20,.9)}
-  .rFill{position:absolute;inset:0;width:0%;background:rgba(229,115,90,.28);
-    border-right:1px solid var(--red);pointer-events:none}
+  .rRow.bench{border-style:dashed;border-color:#4a5a52}
+  .rRow.sel{border-color:var(--mint);background:rgba(50,220,151,.12);animation:rowflash .45s ease-out}
+  /* the let-go fill, with its leading edge painted in — a border would show at width 0 */
+  .rFill{position:absolute;inset:0;width:0%;pointer-events:none;
+    background:linear-gradient(to right,rgba(229,115,90,.28) calc(100% - 1.5px),var(--red) calc(100% - 1.5px))}
   .rTop{position:relative;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
   .rName{font:700 11px/1 var(--f-chaos);color:var(--label)}
   .rName.adm{color:var(--amber)}
@@ -106,6 +117,27 @@
   .rClient{position:relative;font:600 9.5px/1 var(--f-chaos);color:var(--faint);
     margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .rHint{font:600 9px/1.35 var(--f-chaos);color:var(--faint);opacity:.6;margin-top:8px}
+  /* the whole payroll column is the bench: while a hire is marked, anywhere in it that
+     the rows have not claimed yet takes them on and leaves them idle */
+  /* drawn like the board's own "open contract slot" ghosts — a dashed place where something
+     can go — so the column reads as a part of the screen you drop a hire on. It only takes
+     the click while a hire is marked; the look never changes. */
+  #benchZone{position:absolute;left:13px;top:86px;width:160px;bottom:84px;pointer-events:none;
+    border:1px dashed var(--ink-line);border-radius:12px;
+    display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
+    gap:4px;padding:0 8px 12px;text-align:center}
+  #benchZone b{font:700 9px/1 var(--f-chaos);letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
+  #benchZone small{font:600 9px/1.3 var(--f-chaos);color:var(--faint);opacity:.6}
+  #benchZone.armed{pointer-events:auto;cursor:pointer}
+  /* what the sheet under the pointer will cost to clear */
+  #paperTip{position:absolute;display:none;pointer-events:none;transform:translate(-50%,-100%);
+    background:rgba(7,16,12,.95);border:1px solid var(--edge);border-left-width:3px;border-radius:8px;
+    padding:5px 9px;white-space:nowrap;text-align:left}
+  #paperTip.invoice{border-left-color:var(--blue)}
+  #paperTip.fine{border-left-color:#c084fc}
+  #paperTip b{display:block;font:800 13px/1.25 var(--f-chaos);color:var(--chalk)}
+  #paperTip span{display:block;font:600 9.5px/1.4 var(--f-chaos);color:var(--faint)}
+  #paperTip span.next{color:var(--sage2)}
   #tip{position:absolute;bottom:22px;left:34px;display:flex;gap:8px;align-items:center}
   #tip i{width:9px;height:9px;border-radius:50%;background:var(--beam);display:block}
   #tip span{font:400 13px/1 var(--f-chaos);color:var(--sage2)}
@@ -148,6 +180,9 @@
     border:1px solid var(--sage2);color:var(--chalk);font:700 16px/1 var(--f-chaos);
     letter-spacing:.04em;padding:15px 36px;border-radius:999px;transition:.15s}
   .btn:hover{background:var(--edge);transform:translateY(-1px)}
+  /* the van has to have a name on it: no name, no start */
+  .btn:disabled{cursor:not-allowed;opacity:.38;border-color:var(--ink-line);color:var(--sage2)}
+  .btn:disabled:hover{background:var(--panel);transform:none}
   #title .foot{margin-top:24px;color:var(--faint);font-size:13px}
   /* registration */
   #reg{display:none;margin-top:26px;flex-direction:column;align-items:center}
@@ -159,7 +194,9 @@
     font:700 19px/1 var(--f-chaos);letter-spacing:-.01em}
   #coName::placeholder{color:#3f4d46;font-weight:500}
   #coName:focus{border-color:var(--sage2)}
-  .sugg{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:14px;max-width:520px}
+  /* a fixed 3 across, so six names read as two tidy rows rather than whatever wrapping gives */
+  .sugg{display:grid;grid-template-columns:repeat(3,auto);gap:8px;justify-content:center;
+    margin-top:14px;max-width:520px}
   .sugg button{cursor:pointer;font:600 12.5px/1 var(--f-chaos);color:var(--sage2);
     background:transparent;border:1px solid var(--ink-line);border-radius:999px;padding:8px 14px}
   .sugg button:hover{border-color:var(--sage2);color:var(--chalk)}
@@ -210,13 +247,29 @@
   #pauseBtn:hover{border-color:var(--sage2);color:var(--chalk)}
   #pauseBtn.on{display:block}
   /* §7 · the voluntary way out — earned once the overload is real, framed as relief not victory */
-  #claaroBtn{position:fixed;left:50%;bottom:60px;transform:translateX(-50%);z-index:46;display:none;
-    flex-direction:column;align-items:center;gap:3px;cursor:pointer;
-    background:rgba(50,220,151,.1);color:var(--mint);border:1.5px solid var(--mint);border-radius:14px;
-    padding:10px 20px;font:800 13px/1 var(--f-chaos);letter-spacing:.01em;transition:.15s}
+  /* it sits above the money, so one flat row keeps it clear of the score below */
+  #claaroBtn{position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:46;display:none;
+    flex-direction:row;align-items:center;gap:9px;cursor:pointer;
+    background:rgba(50,220,151,.1);color:var(--mint);border:1.5px solid var(--mint);border-radius:999px;
+    padding:6px 16px;font:800 12px/1 var(--f-chaos);letter-spacing:.01em;transition:.15s}
   #claaroBtn small{font:600 10px/1 var(--f-chaos);color:var(--sage2);letter-spacing:.03em;text-transform:none}
+  #claaroBtn small::before{content:'·';margin-right:9px;color:var(--mint)}
   #claaroBtn:hover{background:rgba(50,220,151,.18);transform:translateX(-50%) translateY(-1px)}
   #claaroBtn.on{display:flex}
+  /* losing a client is the loudest thing that can happen: it takes the whole screen and then
+     bleeds out slowly, so you have to sit in it rather than glance at a toast */
+  #lossFlash{position:fixed;inset:0;z-index:45;pointer-events:none;opacity:0;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+    text-align:center;padding:0 24px;
+    background:radial-gradient(120% 90% at 50% 50%,rgba(229,115,90,.14) 0%,rgba(122,20,10,.44) 58%,rgba(54,5,2,.76) 100%)}
+  #lossFlash b{font:800 clamp(30px,6vw,64px)/1.05 var(--f-chaos);letter-spacing:-.02em;
+    color:#ff6a52;text-shadow:0 0 34px rgba(229,115,90,.5)}
+  #lossFlash i{font:700 clamp(18px,3vw,30px)/1.2 var(--f-chaos);font-style:normal;
+    color:#ff8f7a;letter-spacing:-.01em}
+  #lossFlash span{font:600 clamp(13px,1.7vw,18px)/1.5 var(--f-chaos);color:#e5735a;
+    letter-spacing:.05em;margin-top:4px}
+  #lossFlash.on{animation:lossbleed 3.4s ease-out forwards}
+  @keyframes lossbleed{0%{opacity:0}5%{opacity:1}28%{opacity:.94}100%{opacity:0}}
   #paused{position:fixed;inset:0;z-index:47;display:none;align-items:center;justify-content:center;
     background:rgba(5,9,7,.82);backdrop-filter:blur(2px)}
   #paused.on{display:flex}
@@ -241,9 +294,12 @@
       <div id="hudSub" style="font:600 11px/1.5 var(--f-chaos);color:var(--faint);margin-top:5px"></div>
     </div>
   </div>
+  <div id="benchZone"><b>Bench</b><small>drop a hire here</small></div>
   <div id="roster"></div>
+  <div id="paperTip"></div>
+  <div id="lossFlash"><b>Client lost</b><i></i><span></span></div>
   <div id="hint"></div>
-  <div id="tip"><i></i><span>Hold pointer to beam · every second of holding costs you willpower</span></div>
+  <div id="tip"><i></i><span>Tap a worker to pick them up, tap where they go · hold a person to let them go</span></div>
   <div id="toasts"></div>
 </div>
 
@@ -274,8 +330,10 @@
       <button type="button">Apex Hygiene Group</button>
       <button type="button">Sparkle &amp; Sons</button>
       <button type="button">Meridian Cleaning Co.</button>
+      <button type="button">Northwind Hygiene</button>
+      <button type="button">Crown &amp; Cloth</button>
     </div>
-    <button class="btn" id="goBtn" type="submit">Start managing</button>
+    <button class="btn" id="goBtn" type="submit" disabled>Start managing</button>
     <p class="foot">You can change it later, in the sense that you cannot.</p>
   </form>
 </div></div>
@@ -316,7 +374,7 @@
 </div></div>
 
 <button id="pauseBtn" title="Pause (P or Esc)">Pause</button>
-<button id="claaroBtn" title="Hand the routing to Claaro"><span>Route it through Claaro →</span><small>stop being the middle</small></button>
+<button id="claaroBtn" title="Hand the routing to Claaro"><span>Route it through Claaro →</span><small>stop being the bottleneck of your business</small></button>
 <div id="paused"><div class="panel">
   <div class="eyebrow">Paused</div>
   <h2>Nothing is getting cleaner.</h2>
@@ -384,7 +442,7 @@ const CFG={
   FILTHY:.9, SAT_DROP:1/15, SAT_RECOVER:1/8,
   /* more chances than slots, so missing one card is a setback and not a hard cap */
   CONTRACT_DAYS:[1,4,9,15,22,30,38,47], CONTRACT_SITES:[1,4],  /* a client is worth 1–4 sites */
-  ADMIN_OFFER_CASH:6000,
+  ADMIN_OFFER_CASH:4000,          /* loosened so admins actually appear for testing (was 6000) */
   EPI_SEC:9.5,
   /* ── the arc: the work never stops, and it escalates by KIND ──────────
      After the scripted onboarding days above, contracts keep coming while a
@@ -394,7 +452,16 @@ const CFG={
   VIP_REV:1.7, VIP_DIRT:1.55, VIP_SAT_X:1.7, VIP_DIRT0:.55,
   SPILL_FROM_DAY:12, SPILL_HIT:.7,/* an emergency dumps dirt on one site all at once */
   SAT_WARN:.35,                   /* below this a client reads as "at risk" */
-  BURNOUT:6,                      /* seconds run dry before focus depletion ends you (S1) */
+  RED_BAND:.25,                   /* willpower at or below this and the burnout clock runs */
+  BURNOUT:10,                     /* seconds run dry before focus depletion ends you (S1) */
+  BURNOUT_WARN:5,                 /* the last stretch of that: You names the way out */
+  /* the burnout pulse is driven by the FRACTION of the countdown you have burned through,
+     so it always spreads over whatever BURNOUT is set to — 5s or 20s, same arc */
+  PULSE_HZ:11,                    /* how fast it beats */
+  PULSE_MIN:.12,                  /* how strong it is the instant the countdown starts */
+  PULSE_CURVE:1.8,                /* >1 keeps the early band faint and loads the ramp onto the end */
+  OP_DUR:[.6,.3], TAP_MS:200,     /* each op = 0.6+0.3×dots; a click <200ms marks, a longer hold fires */
+  PAPER_DUE:9, PAPER_COST:4,      /* a landed paper waits ~9s before its consequence; a tap costs a little willpower */
   REFERRAL_EVERY:8                /* days a client must stay delighted before referring you onward (X2) */
 };
 /* the job market: an invisible ellipse around the score at the top edge.
@@ -440,13 +507,15 @@ const SAY={
         fire:'Hold on one of your own people to let them go.\nSeverance is a day of their wage.',
         capacity:'Look at the number on the tile — cover over places.\nRed means they physically cannot keep up.',
         market:'People drift past the top of the screen looking for work.\nSpeed is places per day, reliable is how often they turn up — the price is both.',
-        hire:'You have a building and nobody in it.\nHire someone off the market — you need roughly one per site.',
+        hire:'You have a building and nobody in it.\nTap a cleaner up top to pick them up, then tap this building.',
         place:'They are on your beam, not in a building yet.\nHold on the site you want them in — the glowing ones are short of cover.',
         focus:'That ring is your willpower, and it is the only thing here that is yours.\nHolding burns it, letting go refills it. At zero you carry on, badly.',
         admin:'A coordinator is on the market — the amber one.\nThey work at 45% of your speed, and they are not cheap.',
         margin:'Look at your balance. The help costs about what it saves.\nThat is not a bug in the game.',
         vip:'A VIP contract pays well above the rest — and turns filthy fast.\nZero tolerance: neglect it and its satisfaction craters.',
-        burnout:'You have run your willpower dry.\nEase off the beam and let it recover, or you will burn out.'}
+        burnout:'You have run your willpower dry.\nEase off the beam and let it recover, or you will burn out.',
+        bench:'They are hired and on the bench — paid, but idle.\nTap the bench row, then tap a site, to put them to work.',
+        stack:'Invoices and fines pile up beside you now.\nTap the stack to clear them — before a due date runs out.'}
 };
 
 let uidSeq=0;
@@ -503,11 +572,12 @@ const vign=el('rect',{x:0,y:0,width:1600,height:1000,fill:'url(#vign)','pointer-
 
 /* ---------- the score, centred on the top edge; the market orbits it ---------- */
 const scoreG=gr({},Lworld);
-txt(MARKET.cx,46,'DAY 1',{id:'svgDay',fill:'#5f6f68','font-size':11,'font-weight':700,
+/* nudged down from the very top edge to leave the Claaro pill a lane above the money */
+txt(MARKET.cx,66,'DAY 1',{id:'svgDay',fill:'#5f6f68','font-size':11,'font-weight':700,
   'letter-spacing':'.18em','text-anchor':'middle'},scoreG);
-const svgCash=txt(MARKET.cx,86,'€600',{fill:'#32DC97','font-size':32,'font-weight':800,
+const svgCash=txt(MARKET.cx,106,'€600',{fill:'#32DC97','font-size':32,'font-weight':800,
   'letter-spacing':'-.02em','text-anchor':'middle'},scoreG);
-const svgRate=txt(MARKET.cx,106,'+€0/day',{fill:'#32DC97','font-size':12,'font-weight':700,'text-anchor':'middle'},scoreG);
+const svgRate=txt(MARKET.cx,126,'+€0/day',{fill:'#32DC97','font-size':12,'font-weight':700,'text-anchor':'middle'},scoreG);
 const svgDay=scoreG.querySelector('text');
 
 /* ---------- A1 · the coordinator ---------- */
@@ -522,7 +592,8 @@ const youBody=el('circle',{r:45,fill:'#131c17',stroke:'rgba(232,238,235,.45)','s
 const youSil=gr({},youG); silhouette(youSil,45,'rgba(232,238,235,.55)');
 txt(0,88,'You',{fill:'#c3cec9','font-size':14,'font-weight':700,'text-anchor':'middle'},youG);
 /* the ring has a name now — it is not a cooldown, it is what you have left */
-txt(0,-76,'WILLPOWER',{fill:'#5f6f68','font-size':9,'font-weight':800,
+/* the same line carries the way out once burnout is close, so nothing new crowds the ring */
+const youLab=txt(0,-76,'WILLPOWER',{fill:'#5f6f68','font-size':9,'font-weight':800,
   'letter-spacing':'.2em','text-anchor':'middle'},youG);
 const youWp=txt(0,-90,'100%',{fill:'#f0e6c8','font-size':15,'font-weight':800,'text-anchor':'middle'},youG);
 const youCo=txt(0,106,'',{fill:'#5f6f68','font-size':11,'font-weight':600,'text-anchor':'middle'},youG);
@@ -533,7 +604,7 @@ const S={run:false,over:false,t:0,day:1,
   focus:CFG.FOCUS,dry:false,everDry:false,integrated:false,burnoutT:0,
   mx:800,my:520,down:false,shake:0,
   company:'',paused:false,motes:[],contractIdx:0,nextContractDay:0,lastLost:null,marketT:1.5,adminOffered:false,marginWarned:false,
-  hints:{},hintT:0,entropy:.35,carry:null,beamTgt:null,
+  hints:{},hintT:0,entropy:.35,managing:null,marked:null,bench:[],stack:[],beamTgt:null,
   stats:{acts:0,peakSites:0,peakCrew:0,admins:1,adminSpend:0,revTotal:0,wageTotal:0,fired:0,invoicesPaid:0,walkouts:0,fines:0,focusSpent:0}};
 
 /* ---------- ghost slots: "open contract slot" ---------- */
@@ -548,7 +619,12 @@ SLOTS.forEach((s,i)=>{
 let clipSeq=0;
 function addClient(nSites,vip,spotPlan){
   if(S.clients.length>=CFG.MAX_CLIENTS)return null;
-  const idx=S.clients.length, slot=SLOTS[idx], name=CLIENTS[idx];
+  /* a cancelled client frees its pitch, so take the first EMPTY slot — the list index
+     drifts away from the slot index the moment anyone cancels, and two would overlap */
+  const taken=new Set(S.clients.map(c=>c.slot));
+  const idx=SLOTS.findIndex((s,i)=>!taken.has(i));
+  if(idx<0)return null;
+  const slot=SLOTS[idx], name=CLIENTS[idx];
   S.ghosts[idx].style.transition='opacity .5s'; S.ghosts[idx].setAttribute('opacity',0);
   /* outer g = position (attribute); inner g = wobble (CSS transform).
      Never both on one node — a CSS transform overrides the transform attribute. */
@@ -562,7 +638,7 @@ function addClient(nSites,vip,spotPlan){
   const lx=slot.x>800?-42:42, la=slot.x>800?'end':'start';
   const satPct=txt(lx,-148,'satisfied 100%',{fill:'#32DC97','font-size':9,'font-weight':800,'text-anchor':la},g);
   txt(0,-124,name+(vip?' ★':''),{fill:vip?'#e5a94f':'#7f8f88','font-size':14,'font-weight':600,'text-anchor':'middle'},g);
-  const cl={name,x:slot.x,y:slot.y,g:outer,satBar,satPct,sat:1,sites:[],vip:!!vip,refT:CFG.REFERRAL_EVERY};
+  const cl={name,slot:idx,x:slot.x,y:slot.y,g:outer,satBar,satPct,sat:1,sites:[],vip:!!vip,refT:CFG.REFERRAL_EVERY};
   /* four sites need more room on the ring than two do, or the tiles collide */
   const ringR=nSites>3?78:64;
   for(let i=0;i<nSites;i++){
@@ -619,13 +695,9 @@ function leap(x0,y0,x1,y1,r,tone,onLand){
 }
 
 /* A4 · cleaner — stands on the site edge, hops onto dirty spots, files reports */
-function hireCleaner(spec,fx,fy,site){
-  const sites=allSites(); if(!sites.length)return null;
-  const fee=cleanerFee(spec);
-  if(S.cash<fee){toast(SAY.noCash,'bad');return null}
-  S.cash-=fee;
-  /* you chose the building; if something went wrong, fall back to the worst shortfall */
-  site=site||sites.slice().sort((a,b)=>shortfall(b)-shortfall(a))[0];
+/* create a placed cleaner on a site — from the bench (no fee here; it was charged when
+   they were taken on). Leaps in from You, who sends them out. */
+function placeCleaner(spec,site,fx,fy){
   const n=site.crew.length;
   const hx=(n-1)*34, hy=35;                       /* home = bottom edge of the tile */
   const g=gr({transform:`translate(${hx} ${hy})`,opacity:0},site.g);
@@ -651,29 +723,23 @@ function hireCleaner(spec,fx,fy,site){
     pulse(c.x,c.y,'#32DC97'); toast(SAY.hired(site.short,spec.rate,spec.cap),'money')});
   return c}
 
-/* ---------- carrying a hire ----------
-   Hiring is two holds, not one: you lift someone off the market, they ride the beam
-   unplaced, and you put them down on the building you want them in. The buildings that
-   are short of cover glow while you are carrying, so the choice is visible. */
+/* ---------- the bench ----------
+   Hiring is two steps: a tap takes someone on (they land on the bench, paid but idle),
+   then you onboard them to a site by tapping the bench row and then the building. */
 const cleanerFee=spec=>Math.round(spec.rate*CFG.CLEANER_FEE_X/10)*10;
-function pickUp(c){
-  const fee=cleanerFee(c.spec);
-  if(S.cash<fee){toast(SAY.noCash,'bad');return}
-  const g=gr({},Lbeam);
-  el('circle',{r:18,fill:'#131c17',stroke:'rgba(232,238,235,.55)','stroke-width':1.6},g);
-  silhouette(g,18,'rgba(232,238,235,.55)');
-  for(let k=0;k<3;k++)el('circle',{cx:(k-1)*9,cy:29,r:3,
-    fill:k<c.spec.cap?'#c9d6d0':'none',stroke:'#3a4a43','stroke-width':1},g);
-  txt(0,-25,'put down at a site',{fill:'#32DC97','font-size':9,'font-weight':700,'text-anchor':'middle'},g);
-  S.carry={spec:c.spec,g,x:c.x,y:c.y};
-  pulse(c.x,c.y,'#32DC97'); hint('place');
-}
-function putDown(site){
-  const car=S.carry; if(!car)return;
-  /* the money can run out while they are still on the beam — keep hold of them */
-  if(S.cash<cleanerFee(car.spec)){toast(SAY.noCash,'bad');return}
-  S.carry=null; car.g.remove();
-  hireCleaner(car.spec,car.x,car.y,site);
+function benchCleaner(spec){
+  const fee=cleanerFee(spec);
+  if(S.cash<fee){toast(SAY.noCash,'bad');return false}
+  S.cash-=fee;
+  S.bench.push(benchEntry(spec));
+  toast('Cleaner hired · on the bench','money'); hint('bench');
+  return true}
+/* hold:.9 is what a placed cleaner costs to let go — the bench is the same act, same price */
+const benchEntry=spec=>({kind:'cleaner',uid:++uidSeq,spec,rate:spec.rate,cap:spec.cap,
+  rel:spec.rel,brk:spec.brk,hold:.9});
+function onboard(b,site){
+  placeCleaner(b.spec,site,YOU.x,YOU.y);
+  S.bench=S.bench.filter(x=>x!==b);
 }
 
 /* how many spots a site cannot keep on top of */
@@ -691,14 +757,16 @@ function detachCleaner(p){
 function fire(p){
   const sev=Math.round(p.rate*CFG.SEVERANCE);
   S.cash-=sev; S.stats.fired++;
-  if(p.kind==='cleaner'){
-    detachCleaner(p);
-    toast(SAY.firedC(p.site.short,sev),'warn');
+  if(S.bench.includes(p)){                        /* let go straight off the bench */
+    S.bench=S.bench.filter(x=>x!==p);
+    toast('Cleaner let go · bench · −'+money(sev),'warn'); pulse(YOU.x,YOU.y-90,'#e5735a');
+  }else if(p.kind==='cleaner'){
+    detachCleaner(p); toast(SAY.firedC(p.site.short,sev),'warn'); p.g.remove(); pulse(p.x,p.y,'#e5735a');
   }else{
     S.extras=S.extras.filter(x=>x!==p); S.stats.admins=S.extras.length+1;
-    toast(SAY.firedA(sev),'warn');
+    toast(SAY.firedA(sev),'warn'); p.g.remove(); pulse(p.x,p.y,'#e5735a');
   }
-  p.g.remove(); pulse(p.x,p.y,'#e5735a'); S.shake+=3;
+  S.shake+=3;
 }
 
 /* losing a client is always LOCATED — remember who and why, so the game-over screen
@@ -706,12 +774,13 @@ function fire(p){
 function loseClient(cl,reason){
   if(!S.clients.includes(cl))return;
   S.lastLost={name:cl.name,sites:cl.sites.length,reason};
-  toast(`${cl.name} cancelled · ${cl.sites.length} site${cl.sites.length>1?'s':''} gone`,'bad');
+  const n=cl.sites.length, sites=`${n} site${n>1?'s':''} gone`;
+  toast(`${cl.name} cancelled · ${sites}`,'bad');
+  lossFlash(cl.name,sites+' · '+(reason==='fine'?'the fine went unpaid':'you let it get filthy'));
   cl.sites.forEach(s=>s.crew.forEach(c=>{S.crew=S.crew.filter(x=>x!==c)}));
   S.items.filter(i=>(i.meta.site&&i.meta.site.client===cl)||i.meta.client===cl).forEach(killItem);
-  const gi=S.clients.indexOf(cl);
   cl.g.remove(); S.clients=S.clients.filter(x=>x!==cl); S.shake+=8;
-  if(S.ghosts[gi])S.ghosts[gi].setAttribute('opacity',.4);
+  if(S.ghosts[cl.slot])S.ghosts[cl.slot].setAttribute('opacity',.4);   /* the pitch opens up again */
   if(!S.clients.length&&S.day>2)end('clients');
 }
 
@@ -860,7 +929,8 @@ function spawnCandidate(kind){
   txt(0,r+(isA?55:73),money(fee)+' to hire',{fill:'#5f6f68','font-size':8.5,'font-weight':600,'text-anchor':'middle'},g);
   const c={market:true,kind,spec,rate:spec.rate,fee,r,g,ring,RM,p:0,prog:0,hold:isA?.9:.6,dead:false,x:0,y:0};
   S.market.push(c); return c}
-function killCandidate(c){c.dead=true;c.g.remove();S.market=S.market.filter(x=>x!==c)}
+function killCandidate(c){c.dead=true;c.g.remove();S.market=S.market.filter(x=>x!==c);
+  if(S.marked&&S.marked.market===c)unmark()}   /* they walked off — nothing is marked any more */
 
 /* ---------- B · drifting items ---------- */
 /* what drifts at you is paperwork, not work: cleaners handle dirt themselves
@@ -918,6 +988,15 @@ let bannerT=null;
 function banner(m,ms){const b=$('banner');b.textContent=m;b.style.display='block';
   clearTimeout(bannerT);bannerT=setTimeout(()=>{b.style.display='none'},ms||4000)}
 
+/* a toast is too easy to miss for the worst thing on the board: the whole screen goes red
+   and then bleeds out over three seconds, so the loss is something you have to wait through */
+const lossEl=$('lossFlash');
+function lossFlash(name,sub){                     /* "Client lost" is fixed; the name sits under it */
+  lossEl.querySelector('i').textContent=name;
+  lossEl.querySelector('span').textContent=sub;
+  lossEl.classList.remove('on'); void lossEl.offsetWidth;   /* restart it if one is still bleeding */
+  lossEl.classList.add('on');
+}
 function hint(k){if(S.hints[k])return;S.hints[k]=1;
   $('hint').innerHTML=SAY.hint[k].replace('\n','<br>');$('hint').style.display='block';S.hintT=5.5}
 
@@ -928,40 +1007,64 @@ function hint(k){if(S.hints[k])return;S.hints[k]=1;
    because it is the same act. */
 const roster=$('roster');
 let rosterSig='';
-function staffList(){return S.extras.concat(S.crew).sort((a,b)=>a.uid-b.uid)}
+function staffList(){return S.bench.concat(S.extras,S.crew).sort((a,b)=>a.uid-b.uid)}
 function pips(n,cap,cls){let h='<div class="rSet">';
   for(let k=0;k<n;k++)h+=`<div class="${cls}${k<cap?' on':''}"${k<cap&&cls==='rBar'?' style="background:'+arguments[3]+';border-color:'+arguments[3]+'"':''}></div>`;
   return h+'</div>'}
+const benchZone=$('benchZone');
 function drawRoster(){
   const list=staffList();
-  const sig=list.map(p=>p.uid+':'+(p.site?p.site.client.name+'/'+p.site.short:'')).join('|');
+  /* the column lights up as a drop target only while someone from the street is marked */
+  benchZone.classList.toggle('armed',!!(S.marked&&S.marked.from==='street'&&S.run&&!S.over&&!S.managing));
+  const isM=p=>S.marked&&(S.marked.benchEntry===p||S.marked.cleaner===p);
+  const sig=list.map(p=>p.uid+':'+(S.bench.includes(p)?'bench':(p.site?p.site.client.name+'/'+p.site.short:'adm'))+(isM(p)?'*':'')).join('|');
   if(sig===rosterSig)return;                      /* only rebuild when the payroll changes */
   rosterSig=sig;
   if(!list.length){roster.innerHTML='';return}
   let h='<div id="rosterLab">Payroll · '+list.length+'</div>';
   list.forEach(p=>{
-    const adm=p.kind==='admin';
+    const adm=p.kind==='admin', onB=S.bench.includes(p), mk=isM(p);
     const st=adm?0:relStars(p.rel);
     const stc=st>2?'#32DC97':st>1?'#e5a94f':'#e5735a';
-    h+=`<div class="rRow" data-uid="${p.uid}"><div class="rFill"></div>
+    h+=`<div class="rRow${onB?' bench':''}${mk?' sel':''}" data-uid="${p.uid}"><div class="rFill"></div>
       <div class="rTop"><span class="rName${adm?' adm':''}">${adm?'Admin':'Cleaner'}</span>
         <span class="rRate">${money(p.rate)}</span></div>
       <div class="rBot">${adm?'<span class="rWhere">works at '+Math.round(p.speed*100)+'%</span>'
         :'<span class="rPips">'+pips(3,p.cap,'rPip')+pips(3,st,'rBar',stc)+'</span>'}</div>
-      ${adm?'':`<div class="rClient">${p.site.client.name}</div>`}</div>`;
+      ${adm?'':`<div class="rClient">${mk?'tap a site to place →':(onB?'on bench · tap to place':p.site.client.name)}</div>`}</div>`;
   });
-  h+='<div class="rHint">hold a row to let someone go</div>';
+  h+='<div class="rHint">tap a worker then where they go · hold a row to let go</div>';
+  const keep=roster.scrollTop;                    /* a rebuild must not throw a long list back to the top */
   roster.innerHTML=h;
+  roster.scrollTop=keep;
 }
+/* a click anywhere in the payroll column takes the marked street worker on and leaves them
+   on the bench — unless a building happens to sit under the pane, which still wins */
+function benchDrop(ev){
+  const p=toView(ev), site=nearestSite(p.x,p.y);
+  beginMove(site?{type:'facility',site}:{type:'bench'});
+}
+benchZone.addEventListener('pointerdown',ev=>{
+  if(S.over||!S.run||S.managing||!S.marked||S.marked.from!=='street')return;
+  ev.preventDefault(); ev.stopPropagation(); benchDrop(ev);
+});
 /* holding a row is the same act as holding them on the board: same cost, same result */
 let rosterHold=null;
 roster.addEventListener('pointerdown',ev=>{
-  const row=ev.target.closest('.rRow'); if(!row||S.over||!S.run)return;
+  if(S.over||!S.run||S.managing)return;
   ev.preventDefault(); ev.stopPropagation();
-  const p=staffList().find(x=>x.uid===+row.dataset.uid);
-  if(p)rosterHold={p,row,prog:0};
+  if(S.marked&&S.marked.from==='street'){benchDrop(ev);return}  /* a marked street cleaner → onto the bench */
+  const row=ev.target.closest('.rRow'); if(!row)return;
+  const p=staffList().find(x=>x.uid===+row.dataset.uid); if(!p)return;
+  rosterHold={p,row,prog:0,t0:performance.now()};                          /* tap=mark, hold=fire */
 });
-const dropRosterHold=()=>{if(rosterHold){rosterHold.row.querySelector('.rFill').style.width='0%';rosterHold=null}};
+const dropRosterHold=()=>{if(rosterHold){
+  const p=rosterHold.p;
+  if(rosterHold.prog<1&&performance.now()-(rosterHold.t0||0)<CFG.TAP_MS){   /* a quick tap = mark to move */
+    if(S.bench.includes(p))markBench(p); else if(p.kind==='cleaner')markPlaced(p);
+  }
+  const f=rosterHold.row.querySelector('.rFill'); if(f)f.style.width='0%'; rosterHold=null;
+}};
 addEventListener('pointerup',dropRosterHold);
 addEventListener('pointercancel',dropRosterHold);
 roster.addEventListener('pointerleave',dropRosterHold);
@@ -979,22 +1082,9 @@ function tickRoster(dt){
 
 /* ---------- resolve ---------- */
 function resolve(it){
-  /* letting someone go */
+  /* letting someone go (hold-to-fire) */
   if(it.fireable){S.stats.acts++;fire(it);return}
-  /* market hires: they leap to the board */
-  if(it.market){
-    S.stats.acts++;
-    if(it.kind==='contract'){
-      const cl=addClient(it.meta.n,it.meta.vip,it.meta.spotPlan);
-      if(cl){toast(it.meta.vip?SAY.wonVip(cl.name,it.meta.n):SAY.won(cl.name,it.meta.n),'money');
-        zip(it.x,it.y,cl.x,cl.y,'#32DC97'); pulse(cl.x,cl.y,'#32DC97'); if(!S.crew.length)hint('hire')}
-    }
-    /* an Admin has no building to be put in — they go straight to a desk */
-    else if(it.kind==='admin')hireAdmin(it.spec,it.x,it.y); else pickUp(it);
-    killCandidate(it); return;
-  }
-  /* putting the carried hire down in a building */
-  if(it.dropTarget){S.stats.acts++;putDown(it.site);return}
+  /* paperwork resolved by a hold (or by an admin) — market items go through the transfer */
   S.stats.acts++;
   if(it.kind==='contract'){
     const cl=addClient(it.meta.n,it.meta.vip,it.meta.spotPlan);
@@ -1012,25 +1102,10 @@ function resolve(it){
   bumpE(-.05); killItem(it)}
 
 function hitDesk(it){
+  /* invoices and fines LAND on the stack instead of detonating (2B) — the consequence
+     now fires only if their due date runs out on the stack (see paperExpire) */
+  if(it.kind==='invoice'||it.kind==='fine'){landPaper(it);return}
   S.shake+=6; bumpE(.1);
-  if(it.kind==='invoice'){
-    /* an unpaid cleaner does not chase you — they simply stop turning up.
-       Cheaper than the invoice, and far more expensive than it looks. */
-    const c=it.meta.cleaner;
-    if(c&&S.crew.includes(c)){
-      const site=c.site;
-      S.stats.walkouts++;
-      detachCleaner(c); c.g.remove();
-      pulse(c.x,c.y,'#e5735a'); floater(c.x,c.y-24,'walked out','#e5735a');
-      toast(SAY.walkout(site.short,it.meta.amount),'bad');
-    }else floater(it.x,it.y-18,'unpaid','#e5735a');
-    hint('invoice')}
-  if(it.kind==='fine'){
-    /* an unpaid cleanliness fine is a breached contract — the client walks */
-    const cl=it.meta.client;
-    if(cl&&S.clients.includes(cl))loseClient(cl,'fine');
-    else floater(it.x,it.y-18,'unpaid','#c084fc');
-  }
   if(it.kind==='contract')toast('The contract lapsed. Someone else signed it.','warn');
   killItem(it)}
 function bumpE(d){S.entropy=Math.max(.35,Math.min(1,S.entropy+d))}
@@ -1038,10 +1113,35 @@ function bumpE(d){S.entropy=Math.max(.35,Math.min(1,S.entropy+d))}
 /* ---------- C · beam ---------- */
 function toView(ev){const r=svg.getBoundingClientRect(),s=Math.min(r.width/1600,r.height/1000);
   return{x:(ev.clientX-r.left-(r.width-1600*s)/2)/s,y:(ev.clientY-r.top-(r.height-1000*s)/2)/s}}
-function move(ev){const p=toView(ev);S.mx=p.x;S.my=p.y}
+function move(ev){const p=toView(ev);S.mx=p.x;S.my=p.y;S.px=ev.clientX;S.py=ev.clientY;S.pOut=false}
 svg.addEventListener('pointermove',move);
-svg.addEventListener('pointerdown',e=>{e.preventDefault();move(e);S.down=true});
-addEventListener('pointerup',()=>{S.down=false});
+svg.addEventListener('pointerleave',()=>{S.pOut=true});
+/* a tap on the market → hire/sign; on a site (with a benched cleaner armed) → onboard;
+   otherwise it begins a HOLD (fire a placed person / beam paperwork). A transfer locks the rest. */
+function nearestMarket(x,y){let best=null,bd=1e9;S.market.forEach(c=>{if(!c.hireable)return;
+  const dd=Math.hypot(c.x-x,c.y-y);if(dd<58&&dd<bd){bd=dd;best=c}});return best}
+function nearestSite(x,y){let best=null,bd=1e9;allSites().forEach(s=>{
+  const dd=Math.hypot(s.x-x,s.y-y);if(dd<58&&dd<bd){bd=dd;best=s}});return best}
+let pressT=0;                                    /* tell a quick tap (mark) from a hold (fire) */
+svg.addEventListener('pointerdown',e=>{e.preventDefault();move(e);
+  if(!S.run||S.over||S.paused||S.managing)return;              /* locked mid-process */
+  if(S.stack.length&&overStack(S.mx,S.my)){processPaper();return}   /* tap the paper stack (2B) */
+  const mc=nearestMarket(S.mx,S.my);
+  if(mc){if(mc.kind==='contract')beginContract(mc);else markStreet(mc);return}  /* contract signs; a worker is marked */
+  if(S.marked){                                  /* the marked worker's destination */
+    const site=nearestSite(S.mx,S.my);
+    if(site){beginMove({type:'facility',site});return}
+    unmark(); return;                            /* empty board → cancel the mark */
+  }
+  const person=nearestPlaced(S.mx,S.my);
+  if(person){S.down=true;pressT=performance.now();return}      /* placed: tap=mark, hold=fire */
+});
+addEventListener('pointerup',()=>{
+  /* a quick release over a placed cleaner that has not fired is a TAP → mark it to move */
+  if(S.down&&!S.managing&&S.beamTgt&&S.beamTgt.kind==='cleaner'&&(S.beamTgt.prog||0)<1&&performance.now()-pressT<CFG.TAP_MS)
+    markPlaced(S.beamTgt);
+  S.down=false;
+});
 addEventListener('pointercancel',()=>{S.down=false});
 addEventListener('blur',()=>{S.down=false});
 const beamG=gr({opacity:0},Lbeam);
@@ -1049,6 +1149,170 @@ const beamLine=el('line',{stroke:'#f0e6c8','stroke-width':2.5,'stroke-linecap':'
   style:'animation:beamGlow 1.6s ease-in-out infinite'},beamG);
 const beamRing=el('circle',{r:13,fill:'none',stroke:'#f0e6c8','stroke-width':2},beamG);
 const beamDot=el('circle',{r:4,fill:'#f0e6c8'},beamG);
+/* ---------- tap-to-commit: your willpower flows into what you take on ---------- */
+const manageG=gr({opacity:0},Lbeam);
+const manageLine=el('line',{stroke:'#32DC97','stroke-width':2,'stroke-linecap':'round',
+  'stroke-dasharray':'7 7',opacity:.85},manageG);
+const MRC=2*Math.PI*26;
+const manageRing=el('circle',{r:26,fill:'none',stroke:'#32DC97','stroke-width':3,'stroke-linecap':'round',
+  'stroke-dasharray':MRC.toFixed(1),'stroke-dashoffset':MRC.toFixed(1),transform:'rotate(-90)'},manageG);
+const manageLbl=txt(0,0,'',{fill:'#32DC97','font-size':10,'font-weight':800,'text-anchor':'middle'},manageG);
+function nearestPlaced(x,y){let best=null,bd=1e9;S.crew.concat(S.extras).forEach(p=>{
+  const dd=Math.hypot(p.x-x,p.y-y);if(dd<40&&dd<bd){bd=dd;best=p}});return best}
+/* the thin NEON-green dashed halo on whoever is "on your mind" — marching ants so it reads as
+   active. Its OWN element (not inside manageG, whose opacity toggles off between transfers and
+   would hide it), so it shows the moment you mark someone, before any process starts. */
+const MARK_COL='#39ffa8', MARK_ADM='#f0bb63';   /* a coordinator wears the amber they are drawn in */
+const markRing=el('circle',{r:22,fill:'none',stroke:MARK_COL,'stroke-width':1.6,'stroke-dasharray':'4 5',opacity:0,
+  style:`animation:ants .8s linear infinite;filter:drop-shadow(0 0 4px ${MARK_COL})`},Lbeam);
+const opDur=cap=>CFG.OP_DUR[0]+CFG.OP_DUR[1]*Math.max(1,cap);
+/* ---------- mark → destination ----------------------------------------------
+   A click MARKS a worker; the next click on a destination (a facility, or the
+   bench pane) runs the operations that path needs — hiring, onboarding, or both
+   bulked, each with its own name and time. Holding a person is the one destructive act. */
+/* a quick green light-burst from whatever you just clicked — click landed here */
+function burst(x,y,col){col=col||'#32DC97';
+  const c=el('circle',{cx:x,cy:y,r:4,fill:col,opacity:.7},Lfx);
+  let k=0;const iv=setInterval(()=>{k+=.14;c.setAttribute('r',(4+k*34).toFixed(1));
+    c.setAttribute('opacity',Math.max(0,.7-k).toFixed(2)); if(k>=.7){clearInterval(iv);c.remove()}},16)}
+function markEntity(mk){S.marked=mk; drawRoster()}
+function markStreet(m){const adm=m.kind==='admin';
+  markEntity({from:'street',market:m,cap:(m.spec&&m.spec.cap)||1,x:m.x,y:m.y,admin:adm}); burst(m.x,m.y,adm?MARK_ADM:null)}
+function markBench(b){markEntity({from:'bench',benchEntry:b,cap:b.cap})}
+function markPlaced(c){markEntity({from:'facility',cleaner:c,site:c.site,cap:c.cap,x:c.x,y:c.y}); burst(c.x,c.y)}
+function unmark(){S.marked=null; drawRoster()}
+function beginContract(m){S.managing={ops:[{label:'signing',dur:opDur(m.meta.n),src:true}],i:0,t:0,kind:'contract',market:m,x:m.x,y:m.y}; burst(m.x,m.y)}
+function beginMove(dest){
+  const M=S.marked; if(!M)return;
+  if(M.admin){const fee=Math.round(M.market.spec.rate*CFG.ADMIN_FEE_X/10)*10;
+    if(S.cash<fee){toast(SAY.noCash,'bad');unmark();return}
+    S.managing={ops:[{label:'hiring admin',dur:opDur(1),src:true}],i:0,t:0,kind:'admin',market:M.market,x:M.x,y:M.y}; unmark(); return}
+  const DUR=opDur(M.cap); let ops=[];
+  if(dest.type==='bench'){ if(M.from==='street')ops=[{label:'hiring',dur:DUR,src:true}]; else {unmark();return} }
+  else{                                          /* facility */
+    if(M.from==='street')ops=[{label:'hiring',dur:DUR,src:true},{label:'onboarding',dur:DUR,src:false}];
+    else if(M.from==='bench')ops=[{label:'onboarding',dur:DUR,src:false}];
+    else if(M.from==='facility'){if(dest.site===M.site){unmark();return} ops=[{label:'onboarding',dur:DUR,src:false}]}
+  }
+  if(!ops.length){unmark();return}
+  if(M.from==='street'){const fee=cleanerFee(M.market.spec); if(S.cash<fee){toast(SAY.noCash,'bad');unmark();return} S.cash-=fee}
+  S.managing={ops,i:0,t:0,from:M.from,dest,site:dest.site,market:M.market,benchEntry:M.benchEntry,cleaner:M.cleaner,x:M.x||YOU.x,y:M.y||YOU.y};
+  unmark();
+}
+function cancelTransfer(){if(S.managing){S.managing=null;manageG.setAttribute('opacity',0)}}
+function tickManage(dt){
+  /* halo the marked worker so you can see what a click will move */
+  if(S.marked&&(S.marked.from==='street'||S.marked.from==='facility')){
+    const e=S.marked, st=e.from==='street',
+          ex=st?e.market.x:e.cleaner.x, ey=st?e.market.y:e.cleaner.y,
+          col=e.admin?MARK_ADM:MARK_COL;               /* an admin is marked in their own amber */
+    markRing.setAttribute('r',st?e.market.r+5:16);     /* clear of the body, whichever size it is */
+    markRing.setAttribute('stroke',col); markRing.style.filter=`drop-shadow(0 0 4px ${col})`;
+    markRing.setAttribute('opacity',.9);markRing.setAttribute('transform',`translate(${ex.toFixed(1)} ${ey.toFixed(1)})`);
+  }else markRing.setAttribute('opacity',0);
+  const M=S.managing; if(!M){manageG.setAttribute('opacity',0);return}
+  const live=S.focus>0;
+  if(live){const burn=Math.min(S.focus,CFG.DRAIN*dt);S.focus-=burn;S.stats.focusSpent+=burn}
+  M.t+=dt*(live?1:CFG.DRY);                        /* run dry mid-process → it crawls */
+  const op=M.ops[M.i];
+  /* the clock sits on the source (street worker) while hiring, on the site while onboarding */
+  const fx=op.src?(M.market?M.market.x:M.x):(M.site?M.site.x:M.x),
+        fy=op.src?(M.market?M.market.y:M.y):(M.site?M.site.y:M.y);
+  const total=M.ops.reduce((a,o)=>a+o.dur,0), done=M.ops.slice(0,M.i).reduce((a,o)=>a+o.dur,0);
+  const p=Math.min(1,(done+M.t)/total);
+  manageG.setAttribute('opacity',1);
+  manageLine.setAttribute('x1',YOU.x);manageLine.setAttribute('y1',YOU.y);
+  manageLine.setAttribute('x2',fx);manageLine.setAttribute('y2',fy);
+  manageRing.setAttribute('transform',`translate(${fx.toFixed(1)} ${fy.toFixed(1)}) rotate(-90)`);
+  manageRing.setAttribute('stroke-dashoffset',(MRC*(1-p)).toFixed(1));
+  manageLbl.setAttribute('x',fx.toFixed(1));manageLbl.setAttribute('y',(fy-34).toFixed(1));manageLbl.textContent=op.label;
+  if(M.t>=op.dur){M.i++;M.t=0; if(M.i>=M.ops.length)applyMove(M)}
+}
+function applyMove(M){
+  S.managing=null; manageG.setAttribute('opacity',0);
+  if(M.kind==='contract'){const m=M.market,cl=addClient(m.meta.n,m.meta.vip,m.meta.spotPlan);
+    if(cl){toast(m.meta.vip?SAY.wonVip(cl.name,m.meta.n):SAY.won(cl.name,m.meta.n),'money');
+      zip(M.x,M.y,cl.x,cl.y,'#32DC97');pulse(cl.x,cl.y,'#32DC97');killCandidate(m);
+      if(!S.crew.length&&!S.bench.length)hint('hire')} return}
+  if(M.kind==='admin'){if(hireAdmin(M.market.spec,M.x,M.y))killCandidate(M.market); return}
+  if(M.from==='street'){const spec=M.market.spec;
+    if(M.dest.type==='bench'){S.bench.push(benchEntry(spec));
+      toast('Cleaner hired · on the bench','money'); hint('bench')}
+    else placeCleaner(spec,M.dest.site,YOU.x,YOU.y);
+    killCandidate(M.market);
+  }else if(M.from==='bench'){placeCleaner(M.benchEntry.spec,M.dest.site,YOU.x,YOU.y); S.bench=S.bench.filter(x=>x!==M.benchEntry);
+  }else if(M.from==='facility'){const c=M.cleaner,spec={cap:c.cap,rel:c.rel,rate:c.rate,brk:c.brk};
+    detachCleaner(c); c.g.remove(); placeCleaner(spec,M.dest.site,YOU.x,YOU.y);}
+}
+
+/* ---------- the paper stack (2B) --------------------------------------------
+   Invoices and fines still fly at you from all sides, but on TOUCH they no longer
+   detonate — they fold into a side-on stack beside You with a due date. Tap the
+   stack to clear the most urgent (fast, a little willpower each). Let one run out
+   and its consequence fires: an invoice → the cleaner walks; a fine → the client. */
+const STACKX=YOU.x+74, STACKY=YOU.y+2;
+const stackG=gr({transform:`translate(${STACKX} ${STACKY})`},Lbeam);
+const overStack=(x,y)=>Math.abs(x-STACKX)<28 && y>STACKY-124 && y<STACKY+16;
+function landPaper(it){
+  const e={kind:it.kind,meta:it.meta,t:0,due:CFG.PAPER_DUE,jit:R(-3,3)};
+  killItem(it);
+  const col=e.kind==='invoice'?'#60a5fa':'#c084fc';
+  e.rect=el('rect',{x:-18,y:0,width:36,height:6,rx:1.5,fill:col,opacity:.92,stroke:'#0a130f','stroke-width':.8},stackG);
+  S.stack.push(e); S.shake+=2; pulse(STACKX,STACKY,col);
+  if(!S.hints.stack)hint('stack');
+}
+function tickStack(dt){
+  S.stack.forEach((e,i)=>{
+    e.t+=dt; const f=Math.min(1,e.t/e.due);
+    e.rect.setAttribute('transform',`translate(${e.jit.toFixed(1)} ${(-i*5.5).toFixed(1)})`);
+    e.rect.setAttribute('stroke',f>.6?'#e5735a':'#0a130f');
+    e.rect.setAttribute('stroke-width',(f>.6?1+f*1.6:.8).toFixed(2));
+  });
+  S.stack.slice().forEach(e=>{if(e.t>=e.due)paperExpire(e)});
+}
+function paperExpire(e){
+  S.stack=S.stack.filter(x=>x!==e); e.rect.remove(); S.shake+=6; bumpE(.1);
+  if(e.kind==='invoice'){
+    const c=e.meta.cleaner;
+    if(c&&S.crew.includes(c)){const site=c.site;S.stats.walkouts++;detachCleaner(c);c.g.remove();
+      pulse(c.x,c.y,'#e5735a');floater(c.x,c.y-24,'walked out','#e5735a');toast(SAY.walkout(site.short,e.meta.amount),'bad')}
+    else floater(STACKX,STACKY-20,'unpaid','#e5735a');
+    hint('invoice');
+  }else{
+    const cl=e.meta.client;
+    if(cl&&S.clients.includes(cl))loseClient(cl,'fine'); else floater(STACKX,STACKY-20,'unpaid','#c084fc');
+  }
+}
+function processPaper(){
+  if(!S.stack.length)return;
+  const e=S.stack.reduce((a,b)=>b.t>a.t?b:a);      /* the most urgent one (closest to its due date) */
+  S.stack=S.stack.filter(x=>x!==e); e.rect.remove();
+  const burn=Math.min(S.focus,CFG.PAPER_COST); S.focus-=burn; S.stats.focusSpent+=burn;
+  if(e.kind==='invoice'){S.cash-=e.meta.amount;S.stats.invoicesPaid++;floater(STACKX,STACKY-20,'−'+money(e.meta.amount),'#60a5fa')}
+  else{S.cash-=e.meta.amount;S.stats.fines+=e.meta.amount;floater(STACKX,STACKY-20,'−'+money(e.meta.amount),'#c084fc')}
+  pulse(STACKX,STACKY,'#32DC97');
+}
+/* hovering the stack: what the sheet under the pointer costs to clear. A tap still takes
+   the most urgent one, so the tip says which sheet that is rather than implying otherwise. */
+const paperTip=$('paperTip');
+function hoveredPaper(){
+  if(!S.run||S.over||S.paused||S.pOut||!S.stack.length||!overStack(S.mx,S.my))return null;
+  const i=Math.round((STACKY-S.my)/5.5);          /* the sheets sit 5.5 apart, newest on top */
+  return (i<-1||i>=S.stack.length)?null:S.stack[Math.max(0,i)];
+}
+function tickPaperTip(){
+  const e=hoveredPaper();
+  if(!e){paperTip.style.display='none';return}
+  const next=S.stack.reduce((a,b)=>b.t>a.t?b:a);
+  const who=e.kind==='invoice'?(e.meta.cleaner&&e.meta.cleaner.site?e.meta.cleaner.site.short:'unassigned')
+                              :(e.meta.client?e.meta.client.name:'—');
+  paperTip.className=e.kind;
+  paperTip.innerHTML=`<b>−${money(e.meta.amount)}</b><span>${e.kind==='invoice'?'Invoice':'Cleanliness fine'} · ${who}</span>`
+    +(e===next?'<span class="next">tap clears this one</span>':'<span>tap clears the most urgent first</span>');
+  paperTip.style.left=S.px+'px'; paperTip.style.top=(S.py-16)+'px';
+  paperTip.style.display='block';
+  e.rect.setAttribute('stroke','#f0e6c8'); e.rect.setAttribute('stroke-width',1.4);   /* which sheet it means */
+}
 
 /* ---------- day / spawn ---------- */
 /* month end: every cleaner bills you at once. You physically cannot beam
@@ -1114,7 +1378,7 @@ function spawnTick(dt){
     /* market thickens when you are under-covered across the whole estate */
     const gap=allSites().reduce((a,s)=>a+Math.max(0,shortfall(s)),0);
     S.marketT=MARKET.gap*(gap>0?.7:1.5)*R(.8,1.25);
-    const wantAdmin=S.cash>=CFG.ADMIN_OFFER_CASH&&allSites().length>=4&&rnd()<.22;
+    const wantAdmin=S.cash>=CFG.ADMIN_OFFER_CASH&&allSites().length>=2&&rnd()<.3;   /* was ≥4 sites & .22 */
     spawnCandidate(wantAdmin?'admin':'cleaner');
     if(!S.hints.market)hint('market');
     if(wantAdmin&&!S.adminOffered){S.adminOffered=true;toast(SAY.adminOffer,'warn');hint('admin')}
@@ -1128,7 +1392,7 @@ function loop(ts){
   /* last is advanced before any early return, so pausing never banks up a dt spike */
   if(!last)last=ts; let dt=Math.min(.05,(ts-last)/1000); last=ts;
   if(DEBUG&&window.FAST)dt*=3;
-  if(!S.run||S.over||S.paused)return;
+  if(!S.run||S.over||S.paused){paperTip.style.display='none';return}
   S.t+=dt;
   const d=Math.floor(S.t/CFG.DAY)+1; if(d!==S.day){S.day=d;newDay(d)}
   spawnTick(dt);
@@ -1138,12 +1402,13 @@ function loop(ts){
   const rev=sites.reduce((a,s)=>a+s.rev,0);   /* VIP sites are worth more per day */
   /* wages are the sum of individual rates — who you hired actually matters */
   const crewWage=S.crew.reduce((a,c)=>a+c.rate,0);
+  const benchWage=S.bench.reduce((a,b)=>a+b.rate,0);   /* the idle bench is paid too */
   const admWage=S.extras.reduce((a,c)=>a+c.rate,0);
-  const wag=crewWage+admWage;
+  const wag=crewWage+benchWage+admWage;
   S.rate=rev-wag;                     /* the true run-rate, shown in the HUD */
   const perSec=dt/CFG.DAY;
-  /* cash is lumpy: revenue and admin salary tick, crew is settled monthly by invoice */
-  S.cash+=(rev-admWage)*perSec;
+  /* cash is lumpy: revenue, admin salary and the idle bench tick; placed crew bills monthly */
+  S.cash+=(rev-admWage-benchWage)*perSec;
   S.stats.revTotal+=rev*perSec; S.stats.wageTotal+=wag*perSec;
   S.stats.adminSpend+=admWage*perSec;
   S.stats.peakSites=Math.max(S.stats.peakSites,sites.length);
@@ -1162,7 +1427,7 @@ function loop(ts){
 
   /* market orbit: enter left, swing counter-clockwise under the score, leave right */
   S.market.slice().forEach(c=>{
-    c.p+=dt/MARKET.dur;
+    if(!(S.managing&&S.managing.market===c))c.p+=dt/MARKET.dur;   /* freeze the one being hired */
     if(c.p>=1){killCandidate(c);return}
     const pos=marketPos(c.p); c.x=pos.x; c.y=pos.y;
     const fade=marketFade(c.p);
@@ -1171,40 +1436,16 @@ function loop(ts){
     c.hireable=fade>.15;
   });
 
-  /* beam targeting, in priority order so you never fire someone by accident:
-     paperwork first, then the market, and only then your own staff (tighter radius) */
+  /* a running transfer flows willpower into the task; the stack ticks its due dates (2B) */
+  tickManage(dt); tickStack(dt); tickPaperTip();
+  /* the HOLD lane is only firing a placed person now — paperwork is the tappable stack */
   let tgt=null;
-  if(S.down){
+  if(S.down&&!S.managing){
     let bd=1e9;
-    S.items.forEach(it=>{const dd=Math.hypot(it.x-S.mx,it.y-S.my);if(dd<58&&dd<bd){bd=dd;tgt=it}});
-    /* with someone in hand the only other thing you can do is put them down —
-       no hiring on top of a hire, no firing by accident with a body on the beam */
-    if(S.carry){
-      if(!tgt){bd=1e9;
-        allSites().forEach(s=>{const dd=Math.hypot(s.x-S.mx,s.y-S.my);
-          if(dd<52&&dd<bd){bd=dd;tgt=s.drop}})}
-    }else{
-      if(!tgt){bd=1e9;
-        S.market.forEach(c=>{if(!c.hireable)return;
-          const dd=Math.hypot(c.x-S.mx,c.y-S.my);if(dd<58&&dd<bd){bd=dd;tgt=c}})}
-      if(!tgt){bd=1e9;
-        S.crew.concat(S.extras).forEach(p=>{const dd=Math.hypot(p.x-S.mx,p.y-S.my);
-          if(dd<40&&dd<bd){bd=dd;tgt=p}})}
-    }
+    S.crew.concat(S.extras).forEach(p=>{const dd=Math.hypot(p.x-S.mx,p.y-S.my);
+      if(dd<40&&dd<bd){bd=dd;tgt=p}});
   }
   S.beamTgt=tgt;
-  /* the carried hire rides the pointer; buildings short of cover light up for them */
-  if(S.carry){
-    S.carry.x=S.mx; S.carry.y=S.my;
-    S.carry.g.setAttribute('transform',`translate(${S.mx.toFixed(1)} ${S.my.toFixed(1)})`);
-  }
-  allSites().forEach(s=>{
-    s.dglow.setAttribute('opacity',S.carry?(shortfall(s)>0?.85:.22):0);
-    if(s.drop!==tgt&&s.drop.prog>0){
-      s.drop.prog=Math.max(0,s.drop.prog-dt*.85);
-      s.drop.ring.setAttribute('stroke-dashoffset',(s.drop.RM*(1-s.drop.prog)).toFixed(1));
-      if(s.drop.prog<=0)s.drop.ring.setAttribute('opacity',0)}
-  });
   /* show the red dismissal ring only on the person actually under the beam */
   S.crew.concat(S.extras).forEach(p=>{if(p!==tgt&&+p.ring.getAttribute('opacity')>0){
     p.ring.setAttribute('opacity',0);p.prog=0}});
@@ -1212,26 +1453,40 @@ function loop(ts){
     if(S.focus>0){const burn=Math.min(S.focus,CFG.DRAIN*dt);
       S.focus-=burn; S.stats.focusSpent+=burn}
     tgt.prog+=dt*(S.focus>0?(S.dry?CFG.DRY:1):CFG.DRY)/tgt.hold;
-    const C=(tgt.market||tgt.dropTarget)?tgt.RM:(tgt.fireable?2*Math.PI*(tgt.kind==='admin'?35:20):RC);
-    if(tgt.fireable||tgt.dropTarget)tgt.ring.setAttribute('opacity',1);
+    const C=tgt.fireable?2*Math.PI*(tgt.kind==='admin'?35:20):RC;
+    if(tgt.fireable)tgt.ring.setAttribute('opacity',1);
     tgt.ring.setAttribute('stroke-dashoffset',(C*(1-Math.min(1,tgt.prog))).toFixed(1));
     if(tgt.prog>=1)resolve(tgt);
-  }else if(!rosterHold){
-    /* holding a payroll row is still holding — you do not recover while you are doing it */
+  }else if(!rosterHold&&!S.managing){
+    /* you recover only when NOT holding and NOT mid-transfer */
     S.focus=Math.min(CFG.FOCUS,S.focus+CFG.REGEN*Math.max(.5,1-S.extras.length*CFG.ADMIN_REGEN_PEN)*dt);
   }
   if(!S.dry&&S.focus<=0){S.dry=true;hint('focus')}
   if(S.dry&&S.focus>28)S.dry=false;
-  const wp=S.focus/CFG.FOCUS, red=wp<=.10;      /* the red band: willpower at or below 10% */
+  const wp=S.focus/CFG.FOCUS, red=wp<=CFG.RED_BAND;   /* the red band, where burnout starts counting */
   /* burnout counts down ONLY inside the red band — willpower, with teeth (S1) */
   if(red){S.burnoutT+=dt;S.everDry=true; if(!S.hints.burnout)hint('burnout'); if(S.burnoutT>=CFG.BURNOUT)return end('desk')}
   else S.burnoutT=Math.max(0,S.burnoutT-dt*2);
   focusRing.setAttribute('stroke-dashoffset',(FC*(1-wp)).toFixed(1));
   focusRing.setAttribute('stroke',red?'#e5735a':'#f0e6c8');
   /* the willpower readout on You becomes a burnout countdown once you enter the red band */
-  youWp.textContent=red?('BURNOUT '+Math.max(0,Math.ceil(CFG.BURNOUT-S.burnoutT))):(Math.round(wp*100)+'%');
+  const left=Math.max(0,CFG.BURNOUT-S.burnoutT), warn=red&&left<=CFG.BURNOUT_WARN;
+  youWp.textContent=red?('Burnout in '+Math.ceil(left)):(Math.round(wp*100)+'%');
   youWp.setAttribute('fill',red?'#e5735a':tgt?'#e5a94f':'#f0e6c8');
-  youBody.setAttribute('stroke',S.dry?'rgba(229,115,90,.5)':'rgba(232,238,235,.45)');
+  /* the last stretch: the label under the count says how to stop it */
+  youLab.textContent=warn?'Press ESC for a day off':'WILLPOWER';
+  youLab.setAttribute('letter-spacing',warn?'.02em':'.2em');
+  youLab.setAttribute('fill',warn?'#e5735a':'#5f6f68');
+  /* You pulses from the moment the countdown starts — barely there at first, worst on the
+     last second. Depth is a fraction of CFG.BURNOUT, so the arc rescales with the timer. */
+  const deep=red?Math.min(1,Math.max(0,S.burnoutT/CFG.BURNOUT)):0,
+        amp=red?CFG.PULSE_MIN+(1-CFG.PULSE_MIN)*Math.pow(deep,CFG.PULSE_CURVE):0,
+        k=amp*(.5+.5*Math.sin(S.t*CFG.PULSE_HZ)),
+        base=S.dry?[229,115,90,.5]:[232,238,235,.45], hot=[229,115,90,1];
+  youBody.setAttribute('fill',`rgb(${19+70*k|0},${28+14*k|0},${23+14*k|0})`);
+  youBody.setAttribute('stroke-width',(1.5+3.5*k).toFixed(2));
+  youBody.setAttribute('stroke',`rgba(${base.slice(0,3).map((v,i)=>Math.round(v+(hot[i]-v)*k)).join(',')},${(base[3]+(1-base[3])*k).toFixed(2)})`);
+  youBody.style.filter=k>.01?`drop-shadow(0 0 ${(4+14*k).toFixed(1)}px rgba(229,115,90,${(.35+.45*k).toFixed(2)}))`:'';
   youSil.querySelectorAll('*').forEach(n=>n.setAttribute('fill',S.dry?'rgba(229,115,90,.55)':'rgba(232,238,235,.55)'));
   S.items.forEach(it=>{if(it!==tgt&&it.prog>0){it.prog=Math.max(0,it.prog-dt*.85);
     it.ring.setAttribute('stroke-dashoffset',(RC*(1-it.prog)).toFixed(1))}});
@@ -1262,15 +1517,16 @@ function loop(ts){
 
   /* extra coordinators */
   S.extras.forEach(a=>{
-    /* an Admin clears the paperwork — invoices and fines — nearest first (its own channel) */
-    if(!a.target||a.target.dead){
-      a.target=S.items.filter(i=>i.kind==='invoice'||i.kind==='fine').sort((p,q)=>
-        Math.hypot(p.x-a.x,p.y-a.y)-Math.hypot(q.x-a.x,q.y-a.y))[0] || null;
-      a.prog=0}
-    if(a.target){a.line.setAttribute('opacity',.4);
-      a.line.setAttribute('x2',a.target.x-a.x);a.line.setAttribute('y2',a.target.y-a.y);
-      a.prog+=dt*a.speed/a.target.hold;
-      if(a.prog>=1){resolve(a.target);a.target=null;a.prog=0}}
+    /* an Admin clears the paper stack on its own — a genuine second channel (2B/2C) */
+    if(!a.paper||!S.stack.includes(a.paper)){a.paper=S.stack.length?S.stack.reduce((x,y)=>y.t>x.t?y:x):null; a.prog=0}
+    if(a.paper){
+      a.line.setAttribute('opacity',.4);
+      a.line.setAttribute('x2',(STACKX-a.x).toFixed(1));a.line.setAttribute('y2',(STACKY-a.y).toFixed(1));
+      a.prog+=dt*a.speed/0.5;
+      if(a.prog>=1){const e=a.paper; S.stack=S.stack.filter(x=>x!==e); e.rect.remove();
+        if(e.kind==='invoice'){S.cash-=e.meta.amount;S.stats.invoicesPaid++} else {S.cash-=e.meta.amount;S.stats.fines+=e.meta.amount}
+        floater(STACKX,STACKY-20,'−'+money(e.meta.amount),e.kind==='invoice'?'#60a5fa':'#c084fc');
+        a.paper=null;a.prog=0}}
     else a.line.setAttribute('opacity',0)});
 
   /* spots dirty up; cleaners work them autonomously; clients notice */
@@ -1360,6 +1616,7 @@ $('pauseBtn').addEventListener('click',togglePause);
 $('resumeBtn').addEventListener('click',()=>setPaused(false));
 addEventListener('keydown',e=>{
   if(e.target&&/^(INPUT|TEXTAREA)$/.test(e.target.tagName))return;
+  if(e.key==='Escape'&&S.managing){e.preventDefault();cancelTransfer();return}   /* abort a transfer */
   if(e.key==='p'||e.key==='P'||e.key==='Escape'){e.preventDefault();togglePause()}
 });
 
@@ -1370,12 +1627,16 @@ $('startBtn').addEventListener('click',e=>{
   $('reg').classList.add('show');
   setTimeout(()=>$('coName').focus(),60);
 });
+/* you cannot start nameless: the button only wakes up once the field holds something */
+const syncGo=()=>{$('goBtn').disabled=!$('coName').value.trim()};
+$('coName').addEventListener('input',syncGo);
 document.querySelectorAll('.sugg button').forEach(b=>
-  b.addEventListener('click',()=>{$('coName').value=b.textContent.trim();$('coName').focus()}));
+  b.addEventListener('click',()=>{$('coName').value=b.textContent.trim();$('coName').focus();syncGo()}));
 $('reg').addEventListener('submit',e=>{
   e.preventDefault();
   const v=$('coName').value.trim();
-  S.company=(v||$('coName').placeholder).slice(0,24);
+  if(!v){$('coName').focus();return}
+  S.company=v.slice(0,24);
   start();
 });
 function end(reason){
