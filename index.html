@@ -341,7 +341,7 @@
 <div class="screen" id="death"><div class="panel">
   <svg id="deathMark" viewBox="-80 -80 160 160" width="150" height="150" style="margin-bottom:6px"></svg>
   <div class="eyebrow" id="deathEyebrow">Shift over</div>
-  <h2 id="deathTitle">Focus depleted</h2>
+  <h2 id="deathTitle">You worked yourself to burnout…</h2>
   <p id="deathLine"></p>
 </div></div>
 
@@ -401,7 +401,8 @@ const CFG={
   /* the only resource that is actually yours. Holding costs it, letting go returns it,
      and at zero you keep working at a third of the speed — which is worse than stopping. */
   FOCUS:100, DRAIN:30, REGEN:12, DRY:.30,
-  DESK:64, DRIFT:[30,52],
+  DESK:64, DRIFT:[56,92],         /* paperwork comes at you fast now — it lands, it does not detonate */
+  PAPER_LAND:16,                  /* how close to the stack a sheet gets before it folds onto it */
   CASH0:3000,
   SITE_REV:120,
   /* Three stats, rolled independently, and the price is what falls out of them:
@@ -433,7 +434,7 @@ const CFG={
   /* a place goes from clean to filthy over exactly one day if nobody touches it */
   SPOT_ACT:.30, HOP:.45,        /* a hop reads as a hop — slow enough to follow */
   /* invoices chase you; a cleanliness fine is a breached contract */
-  MONTH:30,                       /* cleaners bill once a month, all at once */
+  MONTH:30,                       /* the billing cycle: everyone bills 30 days from their own start */
   MAX_CLIENTS:6,                  /* six buildings' worth of paperwork, all of it yours */
   FINE_MIN:.04,                   /* below this the client lets it go */
   SKIP_FOR:[.5,.9],             /* a no-show, in days */
@@ -452,7 +453,7 @@ const CFG={
   VIP_REV:1.7, VIP_DIRT:1.55, VIP_SAT_X:1.7, VIP_DIRT0:.55,
   SPILL_FROM_DAY:12, SPILL_HIT:.7,/* an emergency dumps dirt on one site all at once */
   SAT_WARN:.35,                   /* below this a client reads as "at risk" */
-  RED_BAND:.25,                   /* willpower at or below this and the burnout clock runs */
+  RED_BAND:.20,                   /* willpower at or below this and the burnout clock runs */
   BURNOUT:10,                     /* seconds run dry before focus depletion ends you (S1) */
   BURNOUT_WARN:5,                 /* the last stretch of that: You names the way out */
   /* the burnout pulse is driven by the FRACTION of the countdown you have burned through,
@@ -461,7 +462,7 @@ const CFG={
   PULSE_MIN:.12,                  /* how strong it is the instant the countdown starts */
   PULSE_CURVE:1.8,                /* >1 keeps the early band faint and loads the ramp onto the end */
   OP_DUR:[.6,.3], TAP_MS:200,     /* each op = 0.6+0.3×dots; a click <200ms marks, a longer hold fires */
-  PAPER_DUE:9, PAPER_COST:4,      /* a landed paper waits ~9s before its consequence; a tap costs a little willpower */
+  PAPER_DUE:18, PAPER_COST:4,     /* a landed paper waits ~18s before its consequence; a tap costs a little willpower */
   REFERRAL_EVERY:8                /* days a client must stay delighted before referring you onward (X2) */
 };
 /* the job market: an invisible ellipse around the score at the top edge.
@@ -487,9 +488,7 @@ const SAY={
   firedC:(s,sev)=>`Cleaner let go · ${s} · −${money(sev)}`,
   firedA:sev=>`Admin let go · −${money(sev)}`,
   walkout:(s,a)=>`Unpaid ${money(a)} — they walked off ${s}`,
-  monthSoon:'Month end tomorrow',
   fine:(c,p,a)=>`${c} · ${p}% below clean · −${money(a)}`,
-  monthEnd:(n,t)=>`Month end · ${n} invoices · ${money(t)}`,
   overloaded:(s,n,c)=>`${s} · ${n} places, ${c} cover`,
   noCash:'Not enough cash',
   understaffed:s=>`${s} · nobody assigned`,
@@ -499,7 +498,7 @@ const SAY={
   marginFlip:'Cashflow just went negative',
   died:{broke:{t:'Insolvent',p:'You ran out of money. Every single site was profitable and the company was not.'},
         clients:{t:'No clients left',p:'The buildings were dirty because you were busy. One by one, they cancelled.'},
-        desk:{t:'Focus depleted',p:'You stopped being able to keep up with the company you built.'},
+        desk:{t:'You worked yourself to burnout…',p:'You stopped being able to keep up with the company you built.'},
         claaro:{t:'You stepped out of the middle',p:'You handed the routing to Claaro. The work still happens — the shifts, the cleaning, the invoices — it just no longer runs through you.'}},
   hint:{first:'A contract is drifting past the top of the screen.\nHold the pointer on it until the ring fills — that wins you a building.',
         job:'Cleaners work the dirt themselves.\nKeep the buildings clean and the bills paid, and the clients stay.',
@@ -638,7 +637,8 @@ function addClient(nSites,vip,spotPlan){
   const lx=slot.x>800?-42:42, la=slot.x>800?'end':'start';
   const satPct=txt(lx,-148,'satisfied 100%',{fill:'#32DC97','font-size':9,'font-weight':800,'text-anchor':la},g);
   txt(0,-124,name+(vip?' ★':''),{fill:vip?'#e5a94f':'#7f8f88','font-size':14,'font-weight':600,'text-anchor':'middle'},g);
-  const cl={name,slot:idx,x:slot.x,y:slot.y,g:outer,satBar,satPct,sat:1,sites:[],vip:!!vip,refT:CFG.REFERRAL_EVERY};
+  /* signedDay is their billing date: they audit you every month on the day you won them */
+  const cl={name,slot:idx,signedDay:S.day,x:slot.x,y:slot.y,g:outer,satBar,satPct,sat:1,sites:[],vip:!!vip,refT:CFG.REFERRAL_EVERY};
   /* four sites need more room on the ring than two do, or the tiles collide */
   const ringR=nSites>3?78:64;
   for(let i=0;i<nSites;i++){
@@ -711,6 +711,8 @@ function placeCleaner(spec,site,fx,fy){
   /* one line under them: their rate normally, what they are doing when it matters */
   const status=txt(0,22,money(spec.rate),{fill:'#5f6f68','font-size':7.5,'font-weight':700,'text-anchor':'middle'},g);
   const c={kind:'cleaner',uid:++uidSeq,site,g,ring,pip,status,rate:spec.rate,cap:spec.cap,rel:spec.rel,brk:spec.brk,
+    /* the day you took them on — they invoice on that date every month, wherever they work */
+    hiredDay:spec.hiredDay||S.day,
     /* the dots, made literal: cap places per day. Each place gets DAY/cap of their time,
        minus the two hops to get there and back — they must scrub it out inside what is left. */
     speed:1/Math.max(.2,(CFG.DAY/spec.cap-2*CFG.HOP)*CFG.CLEAN_MARGIN),
@@ -736,7 +738,7 @@ function benchCleaner(spec){
   return true}
 /* hold:.9 is what a placed cleaner costs to let go — the bench is the same act, same price */
 const benchEntry=spec=>({kind:'cleaner',uid:++uidSeq,spec,rate:spec.rate,cap:spec.cap,
-  rel:spec.rel,brk:spec.brk,hold:.9});
+  rel:spec.rel,brk:spec.brk,hold:.9,hiredDay:spec.hiredDay||S.day});
 function onboard(b,site){
   placeCleaner(b.spec,site,YOU.x,YOU.y);
   S.bench=S.bench.filter(x=>x!==b);
@@ -1242,8 +1244,10 @@ function applyMove(M){
       toast('Cleaner hired · on the bench','money'); hint('bench')}
     else placeCleaner(spec,M.dest.site,YOU.x,YOU.y);
     killCandidate(M.market);
-  }else if(M.from==='bench'){placeCleaner(M.benchEntry.spec,M.dest.site,YOU.x,YOU.y); S.bench=S.bench.filter(x=>x!==M.benchEntry);
-  }else if(M.from==='facility'){const c=M.cleaner,spec={cap:c.cap,rel:c.rel,rate:c.rate,brk:c.brk};
+  }else if(M.from==='bench'){                     /* moving them does not reset their billing date */
+    placeCleaner({...M.benchEntry.spec,hiredDay:M.benchEntry.hiredDay},M.dest.site,YOU.x,YOU.y);
+    S.bench=S.bench.filter(x=>x!==M.benchEntry);
+  }else if(M.from==='facility'){const c=M.cleaner,spec={cap:c.cap,rel:c.rel,rate:c.rate,brk:c.brk,hiredDay:c.hiredDay};
     detachCleaner(c); c.g.remove(); placeCleaner(spec,M.dest.site,YOU.x,YOU.y);}
 }
 
@@ -1253,27 +1257,41 @@ function applyMove(M){
    stack to clear the most urgent (fast, a little willpower each). Let one run out
    and its consequence fires: an invoice → the cleaner walks; a fine → the client. */
 const STACKX=YOU.x+74, STACKY=YOU.y+2;
+const PAPER_GAP=8;                                /* room enough that each sheet reads as its own bar */
+const PAPER_W=36;
 const stackG=gr({transform:`translate(${STACKX} ${STACKY})`},Lbeam);
-const overStack=(x,y)=>Math.abs(x-STACKX)<28 && y>STACKY-124 && y<STACKY+16;
+/* the slot the next sheet will occupy — what a paper in flight aims at */
+const stackSlotY=()=>STACKY-S.stack.length*PAPER_GAP;
+const overStack=(x,y)=>Math.abs(x-STACKX)<28 &&
+  y>STACKY-(S.stack.length*PAPER_GAP+12) && y<STACKY+16;
 function landPaper(it){
   const e={kind:it.kind,meta:it.meta,t:0,due:CFG.PAPER_DUE,jit:R(-3,3)};
   killItem(it);
-  const col=e.kind==='invoice'?'#60a5fa':'#c084fc';
-  e.rect=el('rect',{x:-18,y:0,width:36,height:6,rx:1.5,fill:col,opacity:.92,stroke:'#0a130f','stroke-width':.8},stackG);
+  const col=e.col=e.kind==='invoice'?'#60a5fa':'#c084fc';
+  /* each sheet is a bar seen side-on: an outline holding the area it started with, and a
+     fill that recedes left to right as its due date burns down */
+  e.g=gr({},stackG);
+  e.outline=el('rect',{x:-PAPER_W/2,y:0,width:PAPER_W,height:6,rx:1.5,fill:'none',
+    stroke:col,'stroke-width':.9,opacity:.5},e.g);
+  e.bar=el('rect',{x:-PAPER_W/2,y:0,width:PAPER_W,height:6,rx:1.5,fill:col,opacity:.92},e.g);
   S.stack.push(e); S.shake+=2; pulse(STACKX,STACKY,col);
   if(!S.hints.stack)hint('stack');
 }
 function tickStack(dt){
   S.stack.forEach((e,i)=>{
-    e.t+=dt; const f=Math.min(1,e.t/e.due);
-    e.rect.setAttribute('transform',`translate(${e.jit.toFixed(1)} ${(-i*5.5).toFixed(1)})`);
-    e.rect.setAttribute('stroke',f>.6?'#e5735a':'#0a130f');
-    e.rect.setAttribute('stroke-width',(f>.6?1+f*1.6:.8).toFixed(2));
+    e.t+=dt; const f=Math.min(1,e.t/e.due), rem=1-f, urgent=f>.6;
+    e.g.setAttribute('transform',`translate(${e.jit.toFixed(1)} ${(-i*PAPER_GAP).toFixed(1)})`);
+    const w=PAPER_W*rem;                          /* anchored left: the empty part grows from the right */
+    e.bar.setAttribute('width',w.toFixed(2));
+    /* the bar keeps its kind's colour; the frame it is emptying out of does the shouting */
+    e.outline.setAttribute('stroke',urgent?'#e5735a':e.col);
+    e.outline.setAttribute('stroke-width',(urgent?.9+f*1.2:.9).toFixed(2));
+    e.outline.setAttribute('opacity',(urgent?.5+f*.45:.5).toFixed(2));
   });
   S.stack.slice().forEach(e=>{if(e.t>=e.due)paperExpire(e)});
 }
 function paperExpire(e){
-  S.stack=S.stack.filter(x=>x!==e); e.rect.remove(); S.shake+=6; bumpE(.1);
+  S.stack=S.stack.filter(x=>x!==e); e.g.remove(); S.shake+=6; bumpE(.1);
   if(e.kind==='invoice'){
     const c=e.meta.cleaner;
     if(c&&S.crew.includes(c)){const site=c.site;S.stats.walkouts++;detachCleaner(c);c.g.remove();
@@ -1288,7 +1306,7 @@ function paperExpire(e){
 function processPaper(){
   if(!S.stack.length)return;
   const e=S.stack.reduce((a,b)=>b.t>a.t?b:a);      /* the most urgent one (closest to its due date) */
-  S.stack=S.stack.filter(x=>x!==e); e.rect.remove();
+  S.stack=S.stack.filter(x=>x!==e); e.g.remove();
   const burn=Math.min(S.focus,CFG.PAPER_COST); S.focus-=burn; S.stats.focusSpent+=burn;
   if(e.kind==='invoice'){S.cash-=e.meta.amount;S.stats.invoicesPaid++;floater(STACKX,STACKY-20,'−'+money(e.meta.amount),'#60a5fa')}
   else{S.cash-=e.meta.amount;S.stats.fines+=e.meta.amount;floater(STACKX,STACKY-20,'−'+money(e.meta.amount),'#c084fc')}
@@ -1299,7 +1317,7 @@ function processPaper(){
 const paperTip=$('paperTip');
 function hoveredPaper(){
   if(!S.run||S.over||S.paused||S.pOut||!S.stack.length||!overStack(S.mx,S.my))return null;
-  const i=Math.round((STACKY-S.my)/5.5);          /* the sheets sit 5.5 apart, newest on top */
+  const i=Math.round((STACKY-S.my)/PAPER_GAP);    /* the sheets are stacked a gap apart, newest on top */
   return (i<-1||i>=S.stack.length)?null:S.stack[Math.max(0,i)];
 }
 function tickPaperTip(){
@@ -1313,48 +1331,42 @@ function tickPaperTip(){
     +(e===next?'<span class="next">tap clears this one</span>':'<span>tap clears the most urgent first</span>');
   paperTip.style.left=S.px+'px'; paperTip.style.top=(S.py-16)+'px';
   paperTip.style.display='block';
-  e.rect.setAttribute('stroke','#f0e6c8'); e.rect.setAttribute('stroke-width',1.4);   /* which sheet it means */
+  e.outline.setAttribute('stroke','#f0e6c8'); e.outline.setAttribute('opacity',1);    /* which sheet it means */
 }
 
 /* ---------- day / spawn ---------- */
-/* month end: every cleaner bills you at once. You physically cannot beam
-   them all yourself — which is the moment an Admin stops being optional. */
-function payrollBurst(){
-  const crew=S.crew.slice();
-  if(!crew.length)return;
-  const total=crew.reduce((a,c)=>a+c.rate*CFG.MONTH,0);
-  banner('MONTH END — '+crew.length+' invoices, '+money(total)+' due',4800);
-  toast(SAY.monthEnd(crew.length,total),'bad');
-  crew.forEach((c,i)=>setTimeout(()=>{
+/* Nobody bills you on a shared month end any more: every cleaner and every client keeps
+   its own anniversary. Hired or signed on day 3 → they come at you on 33, 63, 93 … so
+   paperwork arrives on almost every day once the company is big, and the pile-ups are
+   your own hiring history coming back at you rather than a scripted cliff. */
+const billingDay=(day0,d)=>!!day0&&d>day0&&(d-day0)%CFG.MONTH===0;
+const daysToBill=(day0,d)=>CFG.MONTH-((d-day0)%CFG.MONTH);
+function billing(d){
+  /* the people: a month of wages each, invoiced on the day you took them on */
+  S.crew.filter(c=>billingDay(c.hiredDay,d)).forEach((c,i)=>setTimeout(()=>{
     if(S.over||!S.crew.includes(c))return;
     const amt=Math.round(c.rate*CFG.MONTH);
     spawnItem('invoice',{cleaner:c,amount:amt,title:'Invoice',
       sub:money(amt)+' · '+c.site.short,from:{x:c.x,y:c.y}});
   },i*280));
-}
-/* month end, client side: they bill you for the share of the month
-   they spent not knowing whether their buildings had been cleaned. */
-/* month-end audit: a cleaning contract is breached in proportion to how DIRTY the
-   building was, so the fine is (1 − satisfaction) × what the client paid this month. */
-function reportingFines(){
-  S.clients.forEach(cl=>{
+  /* the clients: an audit of the month they just had. A cleaning contract is breached in
+     proportion to how DIRTY the building was, so the fine is (1 − satisfaction) × the
+     month they paid for. Clean enough and they send nothing at all. */
+  S.clients.filter(cl=>billingDay(cl.signedDay,d)).forEach((cl,i)=>{
     const dark=1-cl.sat;
-    if(dark<CFG.FINE_MIN)return;                        /* clean enough — no breach, no fine */
+    if(dark<CFG.FINE_MIN)return;
     const monthly=cl.sites.reduce((a,s)=>a+s.rev,0)*CFG.MONTH;
     const amt=Math.round(dark*monthly);
-    setTimeout(()=>{if(S.over)return;
+    setTimeout(()=>{if(S.over||!S.clients.includes(cl))return;
       spawnItem('fine',{client:cl,amount:amt,pct:Math.round(dark*100),title:'Cleanliness fine',
         sub:Math.round(cl.sat*100)+'% satisfied · '+money(amt),from:{x:cl.x,y:cl.y-144}});
       toast(SAY.fine(cl.name,Math.round(dark*100),amt),'bad');
-    },900);
+    },400+i*320);
   });
 }
 function newDay(d){
   svgDay.textContent='DAY '+d;
-  /* the audit closes the old month first, then the new one starts writing itself up */
-  if(d>1&&d%CFG.MONTH===1)reportingFines();
-  if(d>1&&d%CFG.MONTH===1)payrollBurst();
-  else if(d>1&&d%CFG.MONTH===0)toast(SAY.monthSoon,'warn');
+  billing(d);
   /* the work never stops: the scripted ramp first, then a standing offer whenever a
      slot is free — the estate refills, and past the ramp it can arrive VIP (E1/X1) */
   const scheduled=S.contractIdx<CFG.CONTRACT_DAYS.length&&d>=CFG.CONTRACT_DAYS[S.contractIdx];
@@ -1419,8 +1431,14 @@ function loop(ts){
   svgRate.textContent=(S.rate>=0?'+':'−')+money(Math.abs(S.rate))+'/day';
   svgRate.setAttribute('fill',S.rate>=0?'#32DC97':'#e5735a');
   $('counts').textContent=`${sites.length} site${sites.length!==1?'s':''} · ${S.crew.length} cleaner${S.crew.length!==1?'s':''} · ${S.extras.length+1} coordinator${S.extras.length?'s':''}`;
-  /* honest cashflow: the monthly payroll cliff, and what coordination overhead is costing (S3/X5) */
-  $('hudSub').innerHTML=(S.crew.length?`payroll in ${CFG.MONTH-((S.day-1)%CFG.MONTH)}d · ${money(crewWage*CFG.MONTH)} due`:'')
+  /* honest cashflow: the next invoice date on the books, and what coordination costs (S3/X5) */
+  let nextIn=0,nextDue=0;
+  if(S.crew.length){
+    nextIn=Math.min(...S.crew.map(c=>daysToBill(c.hiredDay,S.day)));
+    nextDue=S.crew.filter(c=>daysToBill(c.hiredDay,S.day)===nextIn)
+                  .reduce((a,c)=>a+c.rate*CFG.MONTH,0);
+  }
+  $('hudSub').innerHTML=(S.crew.length?`next invoice in ${nextIn}d · ${money(nextDue)}`:'')
     +(S.extras.length?`${S.crew.length?' · ':''}<span style="color:#e5a94f">coordination −${money(admWage)}/day</span>`:'');
   /* §7 · offer the way out once the overload is real (≥3 sites and you've felt the wall) */
   $('claaroBtn').classList.toggle('on',S.stats.peakSites>=3&&(S.everDry||S.day>=20));
@@ -1512,10 +1530,13 @@ function loop(ts){
     it.born+=dt;
     if(it.born<.42){const k=it.born/.42;it.tele.setAttribute('r',32*(1-k));it.tele.setAttribute('opacity',.9*(1-k));return}
     else if(it.tele.parentNode)it.tele.remove();
-    const dx=YOU.x-it.x,dy=YOU.y-it.y,dd=Math.hypot(dx,dy)||1;
+    /* paperwork flies at the slot it will land in, not into your face */
+    const paper=it.kind==='invoice'||it.kind==='fine';
+    const tx=paper?STACKX:YOU.x, ty=paper?stackSlotY():YOU.y;
+    const dx=tx-it.x,dy=ty-it.y,dd=Math.hypot(dx,dy)||1;
     it.x+=dx/dd*it.speed*dt; it.y+=dy/dd*it.speed*dt; place(it);
     if(dd<CFG.DESK+120&&!it.warn){it.warn=true;it.body.setAttribute('stroke-width',3)}
-    if(dd<CFG.DESK)hitDesk(it)});
+    if(dd<(paper?CFG.PAPER_LAND:CFG.DESK))hitDesk(it)});
 
   /* extra coordinators */
   S.extras.forEach(a=>{
@@ -1525,7 +1546,7 @@ function loop(ts){
       a.line.setAttribute('opacity',.4);
       a.line.setAttribute('x2',(STACKX-a.x).toFixed(1));a.line.setAttribute('y2',(STACKY-a.y).toFixed(1));
       a.work+=dt*a.speed/0.5;
-      if(a.work>=1){const e=a.paper; S.stack=S.stack.filter(x=>x!==e); e.rect.remove();
+      if(a.work>=1){const e=a.paper; S.stack=S.stack.filter(x=>x!==e); e.g.remove();
         if(e.kind==='invoice'){S.cash-=e.meta.amount;S.stats.invoicesPaid++} else {S.cash-=e.meta.amount;S.stats.fines+=e.meta.amount}
         floater(STACKX,STACKY-20,'−'+money(e.meta.amount),e.kind==='invoice'?'#60a5fa':'#c084fc');
         a.paper=null;a.work=0}}
