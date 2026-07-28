@@ -131,6 +131,12 @@
   #benchZone b{font:700 9px/1 var(--f-chaos);letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
   #benchZone small{font:600 9px/1.3 var(--f-chaos);color:var(--faint);opacity:.6}
   #benchZone.armed{pointer-events:auto;cursor:pointer}
+  /* people can land in the payroll column without you putting them there — when a client
+     cancels, their crew is still hired. The column asks to be looked at, for long enough
+     that it is still going when the full-screen loss flash has finished bleeding out. */
+  @keyframes benchCall{0%,100%{border-color:var(--ink-line);box-shadow:none}
+    50%{border-color:var(--amber);box-shadow:0 0 26px rgba(229,169,79,.3)}}
+  #benchZone.calling{animation:benchCall 1.15s ease-in-out 5}
   /* what the sheet under the pointer will cost to clear */
   #paperTip{position:absolute;display:none;pointer-events:none;transform:translate(-50%,-100%);
     background:rgba(7,16,12,.95);border:1px solid var(--edge);border-left-width:3px;border-radius:8px;
@@ -268,6 +274,9 @@
     color:#ff8f7a;letter-spacing:-.01em}
   #lossFlash span{font:600 clamp(13px,1.7vw,18px)/1.5 var(--f-chaos);color:#e5735a;
     letter-spacing:.05em;margin-top:4px}
+  /* the one thing on this screen that is not a loss: warmer, so it reads as still-yours */
+  #lossFlash span.crew{color:#f0c987;margin-top:14px}
+  #lossFlash span.crew:empty{display:none}
   #lossFlash.on{animation:lossbleed 3.4s ease-out forwards}
   @keyframes lossbleed{0%{opacity:0}5%{opacity:1}28%{opacity:.94}100%{opacity:0}}
   #paused{position:fixed;inset:0;z-index:47;display:none;align-items:center;justify-content:center;
@@ -296,7 +305,7 @@
   <div id="benchZone"><b>Bench</b><small>drop a hire here</small></div>
   <div id="roster"></div>
   <div id="paperTip"></div>
-  <div id="lossFlash"><b>Client lost</b><i></i><span></span></div>
+  <div id="lossFlash"><b>Client lost</b><i></i><span></span><span class="crew"></span></div>
   <div id="hint"></div>
   <div id="tip"><i></i><span>Tap a worker to pick them up, tap where they go · hold a person to let them go</span></div>
   <div id="toasts"></div>
@@ -546,6 +555,8 @@ const R=(a,b)=>a+rnd()*(b-a), pick=a=>a[(rnd()*a.length)|0];
 const money=v=>'€'+Math.round(v).toLocaleString('en-GB');
 /* SVG text cannot wrap or ellipsize itself — clip to what the card can hold */
 const fit=(t,n)=>{t=String(t||'');return t.length<=n?t:t.slice(0,n-1)+'…'};
+/* "Jana" · "Jana and Petr" · "Jana, Petr and 2 more" — names, in a line that cannot grow */
+const nameList=a=>a.length<3?a.join(' and '):`${a[0]}, ${a[1]} and ${a.length-2} more`;
 /* where a run sits against the field — a beatable number, not a bare score (E2).
    A broad baseline curve, refined by your own local leaderboard if you have one. */
 const BENCH=[[0,1],[150,6],[350,16],[650,34],[1000,52],[1400,68],[1900,80],[2600,90],[3600,97],[5200,99]];
@@ -793,8 +804,27 @@ function loseClient(cl,reason){
   S.lastLost={name:cl.name,sites:cl.sites.length,reason}; S.stats.lost++;
   const n=cl.sites.length, sites=`${n} site${n>1?'s':''} gone`;
   toast(`${cl.name} cancelled · ${sites}`,'bad'); SFX.play('lost');
-  lossFlash(cl.name,sites+' · '+(reason==='fine'?'the fine went unpaid':'you let it get filthy'));
-  cl.sites.forEach(s=>s.crew.forEach(c=>{S.crew=S.crew.filter(x=>x!==c)}));
+  /* The client goes; the people do not. Everyone standing on those sites was hired by you,
+     not by them — so they come back to the bench, idle and still on the payroll, keeping
+     their name and their billing date. (They used to be deleted here without a word, which
+     silently refunded their wages and made losing a client cheaper than it should be.)
+     Three things say so, because the loss flash owns the screen for three seconds: a line
+     in the flash itself, a named toast, and the payroll column calling for attention. */
+  const kept=[]; let idleWage=0;
+  cl.sites.forEach(s=>s.crew.slice().forEach(c=>{
+    S.crew=S.crew.filter(x=>x!==c);
+    S.bench.push(benchEntry({cap:c.cap,rel:c.rel,rate:c.rate,brk:c.brk,hiredDay:c.hiredDay,name:c.name}));
+    kept.push(c.name); idleWage+=c.rate;
+  }));
+  lossFlash(cl.name,sites+' · '+(reason==='fine'?'the fine went unpaid':'you let it get filthy'),
+    kept.length?`${nameList(kept)} ${kept.length>1?'are':'is'} still yours — idle on the bench, still paid`:'');
+  if(kept.length){
+    toast(`${nameList(kept)} → bench · still paid · −${money(idleWage)}/day`,'warn');
+    callBench();
+  }
+  /* anything aimed at one of them is aimed at a building that no longer exists */
+  if(S.marked&&S.marked.cleaner&&!S.crew.includes(S.marked.cleaner))unmark();
+  if(S.managing&&S.managing.cleaner&&!S.crew.includes(S.managing.cleaner))cancelTransfer();
   S.items.filter(i=>(i.meta.site&&i.meta.site.client===cl)||i.meta.client===cl).forEach(killItem);
   /* an invoice in flight names its CLEANER, not the site — without this, a bill for a
      cleaner who left with the client keeps flying at you from a building that is gone */
@@ -1091,9 +1121,11 @@ function toast(m,cls){const t=document.createElement('div');t.className='toast '
 /* a toast is too easy to miss for the worst thing on the board: the whole screen goes red
    and then bleeds out over three seconds, so the loss is something you have to wait through */
 const lossEl=$('lossFlash');
-function lossFlash(name,sub){                     /* "Client lost" is fixed; the name sits under it */
+function lossFlash(name,sub,crew){                /* "Client lost" is fixed; the name sits under it */
   lossEl.querySelector('i').textContent=name;
   lossEl.querySelector('span').textContent=sub;
+  /* the people are not part of the loss — this is where you find out where they went */
+  lossEl.querySelector('span.crew').textContent=crew||'';
   lossEl.classList.remove('on'); void lossEl.offsetWidth;   /* restart it if one is still bleeding */
   lossEl.classList.add('on');
 }
@@ -1115,6 +1147,15 @@ const benchZone=$('benchZone');
 /* who the payroll column will take: a hire off the street, or one of your own coming back
    off a site. Anyone already on the bench clicking it is just an unmark. */
 const benchable=m=>!!m&&(m.from==='street'||m.from==='facility');
+/* someone landed in the column that you did not put there — say so for long enough that
+   it outlasts whatever took the screen at the time */
+let benchCallT=null;
+function callBench(){
+  benchZone.classList.remove('calling'); void benchZone.offsetWidth;   /* restart if already going */
+  benchZone.classList.add('calling');
+  clearTimeout(benchCallT);
+  benchCallT=setTimeout(()=>benchZone.classList.remove('calling'),6000);
+}
 function drawRoster(){
   const list=staffList();
   /* the column lights up as a drop target while someone is marked who can be put on it:
@@ -1125,7 +1166,8 @@ function drawRoster(){
   if(sig===rosterSig)return;                      /* only rebuild when the payroll changes */
   rosterSig=sig;
   if(!list.length){roster.innerHTML='';return}
-  let h='<div id="rosterLab">Payroll · '+list.length+'</div>';
+  let h='<div id="rosterLab">Payroll · '+list.length
+        +(S.bench.length?' · '+S.bench.length+' idle':'')+'</div>';
   list.forEach(p=>{
     const adm=p.kind==='admin', onB=S.bench.includes(p), mk=isM(p);
     const st=adm?0:relStars(p.rel);
@@ -1426,7 +1468,15 @@ function paperExpire(e){
     const c=e.meta.cleaner;
     if(c&&S.crew.includes(c)){const site=c.site;S.stats.walkouts++;detachCleaner(c);c.g.remove();SFX.play('walk');
       pulse(c.x,c.y,'#e5735a');floater(c.x,c.y-24,'walked out','#e5735a');toast(SAY.walkout(c.name,site.short,e.meta.amount),'bad')}
-    else floater(STACKX,STACKY-20,'unpaid','#e5735a');
+    else{
+      /* they may have landed on the bench since the bill was raised — a client cancelling
+         under them does not settle their wages. Names are unique on the books, so that is
+         enough to find the same person again. */
+      const b=c&&S.bench.find(x=>x.name===c.name);
+      if(b){S.bench=S.bench.filter(x=>x!==b); S.stats.walkouts++; SFX.play('walk');
+        pulse(YOU.x,YOU.y-90,'#e5735a'); toast(SAY.walkout(b.name,'the bench',e.meta.amount),'bad')}
+      else floater(STACKX,STACKY-20,'unpaid','#e5735a');
+    }
     hint('invoice');
   }else{
     const cl=e.meta.client;
@@ -1576,15 +1626,22 @@ function loop(ts){
   svgCash.setAttribute('fill',S.rate<0?'#e5735a':cantCover?'#e5a94f':'#32DC97');
   svgRate.textContent=(S.rate>=0?'+':'−')+money(Math.abs(S.rate))+'/day';
   svgRate.setAttribute('fill',S.rate>=0?'#32DC97':'#e5735a');
-  $('counts').textContent=`${sites.length} site${sites.length!==1?'s':''} · ${S.crew.length} cleaner${S.crew.length!==1?'s':''} · ${S.extras.length+1} coordinator${S.extras.length?'s':''}`;
+  /* the bench used to be missing from this line entirely — people you pay for and cannot see */
+  $('counts').textContent=`${sites.length} site${sites.length!==1?'s':''} · ${S.crew.length} cleaner${S.crew.length!==1?'s':''}`
+    +(S.bench.length?` · ${S.bench.length} idle`:'')
+    +` · ${S.extras.length+1} coordinator${S.extras.length?'s':''}`;
   /* honest cashflow: the next three dated demands, and what coordination costs (S3/X5) */
   const strip=[];
   for(let k=1;k<=7&&strip.length<3;k++){
     if(!due[k]&&!risk[k])continue;
     strip.push(`in ${k}d ${due[k]?'−'+money(due[k]):'audit'}`+(risk[k]?'<span style="color:#c084fc"> ⚠</span>':''));
   }
+  /* what you pay for nothing, on one line: idle hands first, then coordination */
+  const drains=[];
+  if(S.bench.length)drains.push(`bench −${money(benchWage)}/day`);
+  if(S.extras.length)drains.push(`coordination −${money(admWage)}/day`);
   $('hudSub').innerHTML=(strip.length?strip.join(' · '):'next 7 days · quiet')
-    +(S.extras.length?`<br><span style="color:#e5a94f">coordination −${money(admWage)}/day</span>`:'');
+    +(drains.length?`<br><span style="color:#e5a94f">${drains.join(' · ')}</span>`:'');
   /* said once a day, not once a frame: the date, the demand, and what you actually hold */
   if(cantCover&&S.cashWarnDay!==S.day){S.cashWarnDay=S.day;
     toast(`Day ${S.day+soon} wants ${money(due[soon])} · you hold ${money(S.cash)}`,'warn')}
