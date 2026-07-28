@@ -5,3 +5,7 @@
 # Working material, not part of the game: Claaro brand guidelines, entity
 # sheets, design scraps. Kept local on purpose — see the Claaro sign-off rule.
 Resources/
+
+# Machine-local Claude Code state and working plans. This repo is public;
+# every sibling repo in the workspace ignores the same path.
+/.claude/
