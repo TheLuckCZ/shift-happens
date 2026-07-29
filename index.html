@@ -965,7 +965,16 @@ function rollCleaner(){
 const relStars=rel=>rel>=.88?3:rel>=.7?2:1;
 function marketPos(p){const th=Math.PI*(1-p);
   return{x:MARKET.cx+Math.cos(th)*MARKET.rx, y:MARKET.cy+Math.sin(th)*MARKET.ry}}
-function marketFade(p){return p<.14?p/.14 : p>.86?(1-p)/.14 : 1}
+/* p<0 is the wing: on the band's path but not yet on stage, so it stays invisible and
+   untappable until its turn comes round */
+function marketFade(p){return p<=0?0 : p<.14?p/.14 : p>.86?(1-p)/.14 : 1}
+/* Two clocks feed this one band — hires on their own timer, contracts on the calendar —
+   and neither knew about the other, so a contract could arrive in the same breath as a
+   cleaner and ride the whole lap sitting on top of them. You cannot tap what is behind
+   somebody. Anything new enters far enough behind the last arrival to clear it, waiting
+   in the wing if it has to; nothing is dropped, it just queues. */
+const MARKET_GAP_P=.17;
+const marketEntry=()=>S.market.reduce((p,m)=>Math.min(p,m.p-MARKET_GAP_P),0);
 /* a contract on the market band: the same "hold it before it drifts away" deal as a
    hire, because taking work on is a decision of the same kind as taking a person on */
 function spawnContract(n,vip){
@@ -974,16 +983,20 @@ function spawnContract(n,vip){
   const spotPlan=Array.from({length:n},()=>1+((rnd()*3)|0)), places=spotPlan.reduce((a,b)=>a+b,0);
   const g=gr({opacity:0},Litems), r=20;
   el('circle',{r,fill:'#101a15',stroke:col,'stroke-width':1.6},g);
-  txt(0,5,vip?'★':'C',{fill:col,'font-size':17,'font-weight':800,'text-anchor':'middle'},g);
+  /* centred on the disc by the baseline the font declares, not by an offset guessed for
+     one size — the glyph stays put whatever TSCALE becomes */
+  txt(0,0,vip?'★':'C',{fill:col,'font-size':17,'font-weight':800,'text-anchor':'middle',
+    'dominant-baseline':'central'},g);
   const RM=2*Math.PI*(r+9);
   const ring=el('circle',{r:r+9,fill:'none',stroke:'#f0e6c8','stroke-width':3,'stroke-linecap':'round',
     'stroke-dasharray':RM.toFixed(1),'stroke-dashoffset':RM.toFixed(1),transform:'rotate(-90)'},g);
-  txt(0,r+16,vip?'VIP CONTRACT':'CONTRACT',{fill:'#5f6f68','font-size':8.5,'font-weight':700,
+  /* what it is goes above the disc, what it costs below — same order as a hire */
+  txt(0,-(r+15),vip?'VIP CONTRACT':'CONTRACT',{fill:'#5f6f68','font-size':8.5,'font-weight':700,
     'letter-spacing':'.15em','text-anchor':'middle'},g);
   /* the rate sits at the eyebrow's size — colour and weight carry it, not scale */
-  txt(0,r+31,money(rev)+'/day',{fill:col,'font-size':8.5,'font-weight':800,'text-anchor':'middle'},g);
-  txt(0,r+45,n+' site'+(n>1?'s':'')+' · ≈'+places+' place'+(places>1?'s':''),{fill:'#5f6f68','font-size':9,'font-weight':600,'text-anchor':'middle'},g);
-  const c={market:true,kind:'contract',meta:{n,vip:!!vip,spotPlan},r,g,ring,RM,p:0,prog:0,hold:.8,dead:false,x:0,y:0};
+  txt(0,r+16,money(rev)+'/day',{fill:col,'font-size':8.5,'font-weight':800,'text-anchor':'middle'},g);
+  txt(0,r+30,n+' site'+(n>1?'s':'')+' · ≈'+places+' place'+(places>1?'s':''),{fill:'#5f6f68','font-size':9,'font-weight':600,'text-anchor':'middle'},g);
+  const c={market:true,kind:'contract',meta:{n,vip:!!vip,spotPlan},r,g,ring,RM,p:marketEntry(),prog:0,hold:.8,dead:false,x:0,y:0};
   S.market.push(c); return c}
 
 function spawnCandidate(kind){
@@ -1002,24 +1015,27 @@ function spawnCandidate(kind){
   const RM=2*Math.PI*(r+9);
   const ring=el('circle',{r:r+9,fill:'none',stroke:'#f0e6c8','stroke-width':3,'stroke-linecap':'round',
     'stroke-dasharray':RM.toFixed(1),'stroke-dashoffset':RM.toFixed(1),transform:'rotate(-90)'},g);
-  txt(0,r+14,isA?'ADMIN':'CLEANER',{fill:'#5f6f68','font-size':8.5,'font-weight':700,
+  /* what they are goes above the head; who they are and what they cost hang below it.
+     The role is the thing you scan the band for, and it reads better off the top of the
+     silhouette than buried in the stack of numbers under it. */
+  txt(0,-(r+15),isA?'ADMIN':'CLEANER',{fill:'#5f6f68','font-size':8.5,'font-weight':700,
     'letter-spacing':'.15em','text-anchor':'middle'},g);
-  /* the name sits directly under the eyebrow; everything below it moved down to make room */
-  txt(0,r+26,spec.name,{fill:'#c3cec9','font-size':10,'font-weight':600,'text-anchor':'middle'},g);
-  txt(0,r+41,money(spec.rate)+'/day',{fill:isA?'#e5a94f':'#c3cec9','font-size':8.5,'font-weight':800,'text-anchor':'middle'},g);
-  if(isA)txt(0,r+54,'works at '+Math.round(spec.speed*100)+'%',{fill:'#5f6f68','font-size':9,'font-weight':600,'text-anchor':'middle'},g);
+  /* the name takes the line the role used to hold; everything under it came up with it */
+  txt(0,r+14,spec.name,{fill:'#c3cec9','font-size':10,'font-weight':600,'text-anchor':'middle'},g);
+  txt(0,r+29,money(spec.rate)+'/day',{fill:isA?'#e5a94f':'#c3cec9','font-size':8.5,'font-weight':800,'text-anchor':'middle'},g);
+  if(isA)txt(0,r+42,'works at '+Math.round(spec.speed*100)+'%',{fill:'#5f6f68','font-size':9,'font-weight':600,'text-anchor':'middle'},g);
   else{
     /* the two stats you are actually choosing between, stated plainly and separately.
        Speed is what they can do; reliable is how often they do it. */
     const st=relStars(spec.rel), stc=st>2?'#32DC97':st>1?'#e5a94f':'#e5735a';
-    for(let k=0;k<3;k++)el('circle',{cx:-26+k*11,cy:r+51,r:3.2,
+    for(let k=0;k<3;k++)el('circle',{cx:-26+k*11,cy:r+39,r:3.2,
       fill:k<spec.cap?'#c9d6d0':'none',stroke:'#3a4a43','stroke-width':1},g);
-    txt(6,r+54,'speed',{fill:'#5f6f68','font-size':8,'font-weight':600,'text-anchor':'start'},g);
-    for(let k=0;k<3;k++)el('rect',{x:-30+k*11,y:r+62,width:7,height:5,rx:1.5,
+    txt(6,r+42,'speed',{fill:'#5f6f68','font-size':8,'font-weight':600,'text-anchor':'start'},g);
+    for(let k=0;k<3;k++)el('rect',{x:-30+k*11,y:r+50,width:7,height:5,rx:1.5,
       fill:k<st?stc:'none',stroke:'#3a4a43','stroke-width':1},g);
-    txt(6,r+69,'reliable',{fill:'#5f6f68','font-size':8,'font-weight':600,'text-anchor':'start'},g);}
-  txt(0,r+(isA?67:85),money(fee)+' to hire',{fill:'#5f6f68','font-size':8.5,'font-weight':600,'text-anchor':'middle'},g);
-  const c={market:true,kind,spec,rate:spec.rate,fee,r,g,ring,RM,p:0,prog:0,hold:isA?.9:.6,dead:false,x:0,y:0};
+    txt(6,r+57,'reliable',{fill:'#5f6f68','font-size':8,'font-weight':600,'text-anchor':'start'},g);}
+  txt(0,r+(isA?55:73),money(fee)+' to hire',{fill:'#5f6f68','font-size':8.5,'font-weight':600,'text-anchor':'middle'},g);
+  const c={market:true,kind,spec,rate:spec.rate,fee,r,g,ring,RM,p:marketEntry(),prog:0,hold:isA?.9:.6,dead:false,x:0,y:0};
   S.market.push(c); return c}
 function killCandidate(c){c.dead=true;c.g.remove();S.market=S.market.filter(x=>x!==c);
   if(S.marked&&S.marked.market===c)unmark()}   /* they walked off — nothing is marked any more */
@@ -1049,7 +1065,8 @@ function spawnItem(kind,meta){
   const body=el('rect',{x:-73,y:-21,width:146,height:42,rx:8,fill:'#101a15',stroke:K.c,'stroke-width':1.6},g);
   el('circle',{cx:-53,r:11,fill:K.c,opacity:.18},g);
   el('circle',{cx:-53,r:11,fill:'none',stroke:K.c,'stroke-width':1.3},g);
-  txt(-53,4.5,K.glyph,{fill:K.c,'font-size':13,'font-weight':800,'text-anchor':'middle'},g);
+  txt(-53,0,K.glyph,{fill:K.c,'font-size':13,'font-weight':800,'text-anchor':'middle',
+    'dominant-baseline':'central'},g);
   /* budgets are in characters, so they must come down as TSCALE goes up */
   txt(-35,-2,fit(meta.title||K.title,12),{fill:'#c3cec9','font-size':11.5,'font-weight':700},g);
   txt(-35,10,fit(meta.sub||'',15),{fill:'#5f6f68','font-size':8.5},g);
