@@ -562,7 +562,17 @@ let uidSeq=0;
 /* ---------- utils ---------- */
 function el(t,a,p){const n=document.createElementNS(NS,t);for(const k in a)if(a[k]!=null)n.setAttribute(k,a[k]);(p||svg).appendChild(n);return n}
 const gr=(a,p)=>el('g',a,p);
-function txt(x,y,s,a,p){const t=el('text',Object.assign({x,y,'font-family':"'Plus Jakarta Sans',sans-serif"},a),p);t.textContent=s;return t}
+/* One dial for every label on the board. The stage is a 1600×1000 viewBox fitted with
+   'meet', so the board takes the smaller of the two ratios and a laptop is short, not
+   narrow: an 830-tall window renders everything at .83, where a nominal 8 landed at
+   6.3 real pixels. Sizes below are still authored in the original scale and multiplied
+   once here, which keeps the hierarchy the design set and leaves one number to turn.
+   Raising it: check the two fit() budgets on the item card, the only text on the board
+   boxed to a width that cannot grow with it. */
+const TSCALE=1.4;
+function txt(x,y,s,a,p){
+  if(a&&a['font-size']!=null)a=Object.assign({},a,{'font-size':+(a['font-size']*TSCALE).toFixed(2)});
+  const t=el('text',Object.assign({x,y,'font-family':"'Plus Jakarta Sans',sans-serif"},a),p);t.textContent=s;return t}
 let sd=23;function rnd(){sd|=0;sd=sd+0x6D2B79F5|0;let t=Math.imul(sd^sd>>>15,1|sd);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}
 const R=(a,b)=>a+rnd()*(b-a), pick=a=>a[(rnd()*a.length)|0];
 const money=v=>'€'+Math.round(v).toLocaleString('en-GB');
@@ -675,8 +685,11 @@ function addClient(nSites,vip,spotPlan){
   const outer=gr({transform:`translate(${slot.x} ${slot.y})`,opacity:0},Lworld);
   const g=gr({class:'wob'},outer);
   el('circle',{r:118,fill:'rgba(12,20,16,.55)',stroke:'#3a4a43','stroke-width':1.5,'stroke-dasharray':'3 12'},g);
-  el('rect',{x:-36,y:-152,width:72,height:4,rx:2,fill:'#22322a'},g);
-  const satBar=el('rect',{x:-36,y:-152,width:72,height:4,rx:2,fill:'#32DC97'},g);
+  /* 8 tall, not 4: how happy a client is is the one number you steer by, and a hairline
+     read as decoration. It grows upward from the same baseline so the label beside it
+     still sits on its middle. */
+  el('rect',{x:-36,y:-156,width:72,height:8,rx:4,fill:'#22322a'},g);
+  const satBar=el('rect',{x:-36,y:-156,width:72,height:8,rx:4,fill:'#32DC97'},g);
   /* the readouts hang on the inward side, so the right-hand column never runs its
      labels off the board and under the HUD */
   const lx=slot.x>800?-42:42, la=slot.x>800?'end':'start';
@@ -691,10 +704,13 @@ function addClient(nSites,vip,spotPlan){
     const px=nSites>1?Math.round(Math.cos(ang)*ringR):0, py=nSites>1?Math.round(Math.sin(ang)*ringR):0;
     const sg=gr({transform:`translate(${px} ${py})`},g);
     const tile=el('rect',{x:-38,y:-22,width:76,height:44,rx:7,fill:'#0f1713',stroke:'#2a3a32','stroke-width':1.3},sg);
-    txt(0,-8,SITEN[i%SITEN.length],{fill:'#8a9c94','font-size':9,'font-weight':600,'text-anchor':'middle'},sg);
+    /* two rows, not one: the readouts get the top line to themselves and the name gets the
+       one under it. They used to share a line, which a long name ('West wing') already ran
+       straight through before the type grew — 76 units cannot hold margin + name + cap. */
     const capT=txt(33,-11,'',{fill:'#5f6f68','font-size':7.5,'font-weight':700,'text-anchor':'end'},sg);
     /* the honest per-site P&L: its revenue minus the wages standing on it (S2) */
     const marginT=txt(-33,-11,'',{fill:'#5f6f68','font-size':7.5,'font-weight':800,'text-anchor':'start'},sg);
+    txt(0,1,SITEN[i%SITEN.length],{fill:'#8a9c94','font-size':9,'font-weight':600,'text-anchor':'middle'},sg);
     /* where a cleaner you are carrying can be put down */
     const dglow=el('rect',{x:-42,y:-26,width:84,height:52,rx:9,fill:'none',stroke:'#32DC97',
       'stroke-width':1.6,'stroke-dasharray':'5 5',opacity:0},sg);
@@ -708,7 +724,8 @@ function addClient(nSites,vip,spotPlan){
       rev:CFG.SITE_REV*(vip?CFG.VIP_REV:1),dirtMul:vip?CFG.VIP_DIRT:1};
     site.drop={site,dropTarget:true,ring:dring,RM:DR,prog:0,hold:.5,x:site.x,y:site.y};
     for(let k=0;k<nSpots;k++){
-      const sx=(k-(nSpots-1)/2)*23, sy=7;
+      /* the name row dropped to make room above it, so the places drop with it */
+      const sx=(k-(nSpots-1)/2)*23, sy=11.5;
       el('rect',{x:sx-9.5,y:sy-5.5,width:19,height:11,rx:3.5,fill:'#0d1512',stroke:'#2a3a32','stroke-width':1},sg);
       const cid='sc'+(clipSeq++);
       const cp=el('clipPath',{id:cid},DEFS); el('rect',{x:sx-9.5,y:sy-5.5,width:19,height:11,rx:3.5},cp);
@@ -1024,13 +1041,17 @@ function spawnItem(kind,meta){
   sx=Math.max(80,Math.min(1520,sx)); sy=Math.max(300,Math.min(946,sy));
   const g=gr({},Litems);
   const tele=el('circle',{r:32,fill:'none',stroke:K.c,'stroke-width':1,'stroke-dasharray':'3 5',opacity:.9},g);
-  /* 120 wide: label + subtitle must never run past the border */
-  const body=el('rect',{x:-60,y:-20,width:120,height:40,rx:8,fill:'#101a15',stroke:K.c,'stroke-width':1.6},g);
-  el('circle',{cx:-42,r:11,fill:K.c,opacity:.18},g);
-  el('circle',{cx:-42,r:11,fill:'none',stroke:K.c,'stroke-width':1.3},g);
-  txt(-42,4.5,K.glyph,{fill:K.c,'font-size':13,'font-weight':800,'text-anchor':'middle'},g);
-  txt(-24,-2,fit(meta.title||K.title,15),{fill:'#c3cec9','font-size':11.5,'font-weight':700},g);
-  txt(-24,10,fit(meta.sub||'',18),{fill:'#5f6f68','font-size':8.5},g);
+  /* 146 wide: label + subtitle must never run past the border. This is the only text on
+     the board inside a box that cannot grow with it, so the card was widened from 120
+     alongside TSCALE — otherwise bigger type just buys harder truncation. Hit-testing is
+     radial (CFG.DESK), so the rect is purely what you see and is free to change. */
+  const body=el('rect',{x:-73,y:-21,width:146,height:42,rx:8,fill:'#101a15',stroke:K.c,'stroke-width':1.6},g);
+  el('circle',{cx:-53,r:11,fill:K.c,opacity:.18},g);
+  el('circle',{cx:-53,r:11,fill:'none',stroke:K.c,'stroke-width':1.3},g);
+  txt(-53,4.5,K.glyph,{fill:K.c,'font-size':13,'font-weight':800,'text-anchor':'middle'},g);
+  /* budgets are in characters, so they must come down as TSCALE goes up */
+  txt(-35,-2,fit(meta.title||K.title,12),{fill:'#c3cec9','font-size':11.5,'font-weight':700},g);
+  txt(-35,10,fit(meta.sub||'',15),{fill:'#5f6f68','font-size':8.5},g);
   const ring=el('circle',{r:22,fill:'none',stroke:'#f0e6c8','stroke-width':3,'stroke-linecap':'round',
     'stroke-dasharray':RC.toFixed(1),'stroke-dashoffset':RC.toFixed(1),transform:'rotate(-90)'},g);
   const it={kind,K,g,ring,tele,body,x:sx,y:sy,prog:0,hold:K.hold,meta,born:0,
