@@ -980,7 +980,8 @@ function spawnContract(n,vip){
     'stroke-dasharray':RM.toFixed(1),'stroke-dashoffset':RM.toFixed(1),transform:'rotate(-90)'},g);
   txt(0,r+16,vip?'VIP CONTRACT':'CONTRACT',{fill:'#5f6f68','font-size':8.5,'font-weight':700,
     'letter-spacing':'.15em','text-anchor':'middle'},g);
-  txt(0,r+31,money(rev)+'/day',{fill:col,'font-size':12.5,'font-weight':800,'text-anchor':'middle'},g);
+  /* the rate sits at the eyebrow's size — colour and weight carry it, not scale */
+  txt(0,r+31,money(rev)+'/day',{fill:col,'font-size':8.5,'font-weight':800,'text-anchor':'middle'},g);
   txt(0,r+45,n+' site'+(n>1?'s':'')+' · ≈'+places+' place'+(places>1?'s':''),{fill:'#5f6f68','font-size':9,'font-weight':600,'text-anchor':'middle'},g);
   const c={market:true,kind:'contract',meta:{n,vip:!!vip,spotPlan},r,g,ring,RM,p:0,prog:0,hold:.8,dead:false,x:0,y:0};
   S.market.push(c); return c}
@@ -1005,7 +1006,7 @@ function spawnCandidate(kind){
     'letter-spacing':'.15em','text-anchor':'middle'},g);
   /* the name sits directly under the eyebrow; everything below it moved down to make room */
   txt(0,r+26,spec.name,{fill:'#c3cec9','font-size':10,'font-weight':600,'text-anchor':'middle'},g);
-  txt(0,r+41,money(spec.rate)+'/day',{fill:isA?'#e5a94f':'#c3cec9','font-size':12.5,'font-weight':800,'text-anchor':'middle'},g);
+  txt(0,r+41,money(spec.rate)+'/day',{fill:isA?'#e5a94f':'#c3cec9','font-size':8.5,'font-weight':800,'text-anchor':'middle'},g);
   if(isA)txt(0,r+54,'works at '+Math.round(spec.speed*100)+'%',{fill:'#5f6f68','font-size':9,'font-weight':600,'text-anchor':'middle'},g);
   else{
     /* the two stats you are actually choosing between, stated plainly and separately.
