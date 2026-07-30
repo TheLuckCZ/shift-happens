@@ -642,6 +642,24 @@ const focusRing=el('circle',{r:58,fill:'none',stroke:'#f0e6c8','stroke-width':5,
   'stroke-dasharray':FC.toFixed(1),'stroke-dashoffset':0,transform:'rotate(-90)'},youG);
 const youBody=el('circle',{r:45,fill:'#131c17',stroke:'rgba(232,238,235,.45)','stroke-width':1.5},youG);
 const youSil=gr({},youG); silhouette(youSil,45,'rgba(232,238,235,.55)');
+/* whatever your willpower is going into right now, named on you rather than out on the board:
+   it sits under the silhouette's shoulders, inside the ring, so the one place you watch while
+   you burn tells you what you are burning it on. Green for building, red for firing. */
+const youAct=txt(0,36,'',{fill:'#32DC97','font-size':10,'font-weight':800,
+  'text-anchor':'middle',opacity:0},youG);
+/* down there the ring is only ~86px across, and "off-boarding" is wider than that at any
+   readable size — so a long name is squeezed to fit rather than allowed to cross the ring.
+   Measured once per label change, not per frame. */
+const ACT_W=82;
+function act(label,col){
+  if(!label){youAct.setAttribute('opacity',0);return}
+  if(youAct.textContent!==label){
+    youAct.textContent=label; youAct.removeAttribute('textLength');
+    const w=youAct.getComputedTextLength();
+    if(w>ACT_W){youAct.setAttribute('textLength',ACT_W);youAct.setAttribute('lengthAdjust','spacingAndGlyphs')}
+  }
+  youAct.setAttribute('fill',col||'#32DC97'); youAct.setAttribute('opacity',1);
+}
 txt(0,88,'You',{fill:'#c3cec9','font-size':14,'font-weight':700,'text-anchor':'middle'},youG);
 /* the ring has a name now — it is not a cooldown, it is what you have left */
 /* the same line carries the way out once burnout is close, so nothing new crowds the ring */
@@ -1273,6 +1291,7 @@ function tickRoster(dt){
   const live=roster.querySelector(`.rRow[data-uid="${p.uid}"]`);
   if(live)rosterHold.row=live;
   if(S.focus>0){const burn=Math.min(S.focus,CFG.DRAIN*dt);S.focus-=burn;S.stats.focusSpent+=burn}
+  act('firing','#e5735a');                        /* same cost from the list as from the board */
   rosterHold.prog+=dt*(S.focus>0?(S.dry?CFG.DRY:1):CFG.DRY)/p.hold;
   rosterHold.row.querySelector('.rFill').style.width=Math.min(100,rosterHold.prog*100)+'%';
   if(rosterHold.prog>=1){S.stats.acts++;fire(p);dropRosterHold()}
@@ -1354,7 +1373,6 @@ const manageLine=el('line',{stroke:'#32DC97','stroke-width':2,'stroke-linecap':'
 const MRC=2*Math.PI*26;
 const manageRing=el('circle',{r:26,fill:'none',stroke:'#32DC97','stroke-width':3,'stroke-linecap':'round',
   'stroke-dasharray':MRC.toFixed(1),'stroke-dashoffset':MRC.toFixed(1),transform:'rotate(-90)'},manageG);
-const manageLbl=txt(0,0,'',{fill:'#32DC97','font-size':10,'font-weight':800,'text-anchor':'middle'},manageG);
 function nearestPlaced(x,y){let best=null,bd=1e9;S.crew.concat(S.extras).forEach(p=>{
   const dd=Math.hypot(p.x-x,p.y-y);if(dd<40&&dd<bd){bd=dd;best=p}});return best}
 /* the thin NEON-green dashed halo on whoever is "on your mind" — marching ants so it reads as
@@ -1401,7 +1419,7 @@ function beginMove(dest){
   S.managing={ops,i:0,t:0,from:M.from,dest,site:dest.site,market:M.market,benchEntry:M.benchEntry,cleaner:M.cleaner,x:M.x||YOU.x,y:M.y||YOU.y};
   unmark();
 }
-function cancelTransfer(){if(S.managing){S.managing=null;manageG.setAttribute('opacity',0)}}
+function cancelTransfer(){if(S.managing){S.managing=null;manageG.setAttribute('opacity',0);act(null)}}
 function tickManage(dt){
   /* halo the marked worker so you can see what a click will move */
   if(S.marked&&(S.marked.from==='street'||S.marked.from==='facility')){
@@ -1412,7 +1430,7 @@ function tickManage(dt){
     markRing.setAttribute('stroke',col); markRing.style.filter=`drop-shadow(0 0 4px ${col})`;
     markRing.setAttribute('opacity',.9);markRing.setAttribute('transform',`translate(${ex.toFixed(1)} ${ey.toFixed(1)})`);
   }else markRing.setAttribute('opacity',0);
-  const M=S.managing; if(!M){manageG.setAttribute('opacity',0);return}
+  const M=S.managing; if(!M){manageG.setAttribute('opacity',0);act(null);return}
   const live=S.focus>0;
   if(live){const burn=Math.min(S.focus,CFG.DRAIN*dt);S.focus-=burn;S.stats.focusSpent+=burn}
   M.t+=dt*(live?1:CFG.DRY);                        /* run dry mid-process → it crawls */
@@ -1427,7 +1445,7 @@ function tickManage(dt){
   manageLine.setAttribute('x2',fx);manageLine.setAttribute('y2',fy);
   manageRing.setAttribute('transform',`translate(${fx.toFixed(1)} ${fy.toFixed(1)}) rotate(-90)`);
   manageRing.setAttribute('stroke-dashoffset',(MRC*(1-p)).toFixed(1));
-  manageLbl.setAttribute('x',fx.toFixed(1));manageLbl.setAttribute('y',(fy-34).toFixed(1));manageLbl.textContent=op.label;
+  act(op.label);
   if(M.t>=op.dur){M.i++;M.t=0; if(M.i>=M.ops.length)applyMove(M)}
 }
 function applyMove(M){
@@ -1754,7 +1772,9 @@ function loop(ts){
       S.focus-=burn; S.stats.focusSpent+=burn}
     tgt.prog+=dt*(S.focus>0?(S.dry?CFG.DRY:1):CFG.DRY)/tgt.hold;
     const C=tgt.fireable?2*Math.PI*(tgt.kind==='admin'?35:20):RC;
-    if(tgt.fireable)tgt.ring.setAttribute('opacity',1);
+    /* the same slot that names hiring names this one too — in red, because it costs the
+       same willpower and takes a person off the board */
+    if(tgt.fireable){tgt.ring.setAttribute('opacity',1);act('firing','#e5735a')}
     tgt.ring.setAttribute('stroke-dashoffset',(C*(1-Math.min(1,tgt.prog))).toFixed(1));
     if(tgt.prog>=1)resolve(tgt);
   }else if(!rosterHold&&!S.managing){
@@ -1985,7 +2005,7 @@ $('reg').addEventListener('submit',e=>{
   start();
 });
 function end(reason){
-  if(S.over)return; S.over=true; S.run=false; S.down=false;
+  if(S.over)return; S.over=true; S.run=false; S.down=false; act(null);
   S.paused=false;$('paused').classList.remove('on');document.body.classList.remove('frozen');
   $('pauseBtn').classList.remove('on'); $('claaroBtn').classList.remove('on');
   $('muteBtn').classList.remove('on'); pillOn=false; placeScore();   /* the score can sit high again */
